@@ -210,7 +210,15 @@ export class FlatTable{
     const ctx=this.ctx;ctx.clearRect(0,0,this.w,this.h);
     this.decor();this.spool();
     const frame=this.lastFrame;if(!frame)return;
-    this.yarn(frame.points);
+    // Preserve actual stitch layering: back-bars first, V-shaped front
+    // loops above. Concatenating all segment paths into one line invents
+    // huge, discontinuous knots that are NOT crochet.
+    const order=['tail','back','front','active','working'] as const;
+    for(const role of order){
+      for(const segment of frame.segments){
+        if(segment.role===role)this.yarn(segment.points);
+      }
+    }
     if(this.guide){
       const at=this.at(frame.live[4]);
       ctx.strokeStyle='#f9e0ad';ctx.lineWidth=3;ctx.beginPath();
