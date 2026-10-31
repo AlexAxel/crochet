@@ -36,10 +36,11 @@ describe('hide hook / physical grasp inspection mode',()=>{
     const marker=inspectionPoint(frame,false);
     expect(marker).toBe(frame.yarn[frame.graspIndex!]);
     expect(frame.yarn).toEqual(original);
+    const markerZ=marker!.z;
     yarn.setPullProgress(.70);
     for(let i=0;i<12;i++)yarn.simulate(1/120);
     const moved=inspectionPoint(yarn.frame,false)!;
     expect(moved).toBe(yarn.positions[yarn.frame.graspIndex!]);
-    expect(Math.abs(moved.z-marker!.z)).toBeGreaterThan(.08);
+    expect(Math.abs(moved.z-markerZ)).toBeGreaterThan(.08);
   });
 });
