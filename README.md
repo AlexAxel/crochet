@@ -1,4 +1,4 @@
-# Crochet Lab — interactive crochet alpha 0.1
+# Crochet Lab — interactive crochet alpha 0.2
 
 **GitHub Pages:** https://alexaxel.github.io/crochet/
 
@@ -24,7 +24,7 @@ Open the URL printed by Vite (usually http://localhost:5173). Build and test:
 
 ## What to try
 
-An example of 14 foundation chains, two full rows of SC, and 8 stitches of a third row is loaded immediately. Continue with keyboard shortcuts:
+An example of 14 foundation chains, two 13-SC rows, two explicitly tracked turning chains, and 8 stitches of a third row is loaded immediately. The first chain next to the hook is reserved for turning height: the first SC enters the second chain. Continue with keyboard shortcuts:
 
 | Key | Action | Model semantics |
 | --- | --- | --- |
@@ -56,3 +56,11 @@ This is **NOT YET** a verified physically exact crochet simulator. The *graph se
 The command graph and geometry are separate specifically so we can replace the approximate geometric templates with validated ones. Add new primitives and typed geometrical operations as separate modules; do not bake stitch images into the UI. No external GPL algorithm or source code was copied.
 
 No image assets or 3D artist are required for this stage.
+
+## Immersive board and training (0.2)
+
+The prototype is now a fullscreen tabletop with floating tool HUD. Expert-facing stage-by-stage walkthrough explains where the hook enters, what strand is caught, how many live loops are on the hook, and when a finished stitch is committed. Use **1. Как делается ВП?** to clear the demo and start a chain lesson, or **2. Как делается СБН?** to load eight chains and start SC from the second chain from hook. While staging, Space/Enter/ArrowRight advance; ArrowLeft goes back; Escape cancels. No command is written until the final stage.
+
+Uncheck **Поэтапный разбор новых операций** for relaxing one-press-per-stitch gameplay. Click **Последняя петля** to zoom, and use the speed slider to slow yarn reveal.
+
+The schematic lesson visualization is **not computed from the 3D yarn path**; it remains instructional, and the 3D path remains approximate. Passing graph tests does not prove correct knot topology. See EXPERT_REVIEW.md.
