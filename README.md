@@ -1,5 +1,10 @@
 # Crochet Lab — interactive crochet alpha 0.1
 
+**GitHub Pages:** https://alexaxel.github.io/crochet/
+
+Built static website is committed to `main/docs/` automatically by `.github/workflows/build-pages.yml` whenever application code on `main` changes. GitHub Pages source: **Deploy from a branch → main → /docs**. No local dev server is necessary to view the public prototype. The Vite production base path is `/crochet/`. To rebuild manually use `npm run build:pages`.
+
+
 This is a **real, command-driven stitch graph** with a single procedurally rendered yarn path, not a sprite grid or a stitch GIF. It is a research prototype for a relaxing, top-down Steam crochet game. UI is in Russian.
 
 

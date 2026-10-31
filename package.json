@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:pages": "tsc --noEmit && vite build --base=/crochet/ --outDir docs --emptyOutDir"
   },
   "dependencies": {
     "three": "^0.181.0"
