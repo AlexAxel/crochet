@@ -1,69 +1,59 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<meta name="theme-color" content="#b69071">
-<title>Crochet — Вязание</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#b68c68">
+  <meta name="description" content="Медитативная игра с воздушными петлями.">
+  <title>Crochet · Тихая мастерская</title>
 </head>
 <body>
-<div id="app" class="game">
-  <div id="table" aria-label="Стол с пряжей и крючком"></div>
-  <div class="ambient-light"></div>
-  <div class="desk-corner top-left">
-    <div class="view-switch" role="group" aria-label="Отображение полотна">
-      <button data-view="3d" class="active" aria-pressed="true">3D</button>
-      <button data-view="2.5d" aria-pressed="false">2,5D</button>
+  <main id="studio" class="studio">
+    <div id="desk" aria-label="Деревянный стол, пряжа и воздушная цепочка"></div>
+    <div class="light" aria-hidden="true"></div>
+    <div class="topline">
+      <div class="brand"><span class="brand-stamp">✳</span><span>CROCHET <small>тихая мастерская</small></span></div>
+      <button id="settings-open" class="setting-button" aria-label="Настройки" title="Настройки">⚙</button>
     </div>
-  </div>
-  <div class="desk-corner top-right"><button id="settings-open" aria-label="Настройки" title="Настройки">⚙</button></div>
-  <div class="board-actions">
-    <button id="unravel" class="tool-action" title="Распустить последнюю петлю (2 или Backspace)" aria-label="Распустить">↶</button>
-    <button id="stitch" class="main-action"><span class="key-hint">1</span><span>Воздушная петля</span><span class="loop-icon">◎</span></button>
-    <button id="reset" class="tool-action" title="Смотать цепочку сначала" aria-label="Сначала">⟲</button>
-  </div>
-  <div id="navigation-hint" class="bottom-note">3D: ЛКМ — вращать · Колёсико зажать — перемещать · Прокрутка — масштаб к курсору</div>
-  <div id="notice" aria-live="polite"></div>
-  <div id="settings" class="settings-backdrop" hidden>
-    <div class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <div class="settings-head"><h2 id="settings-title">Настройки</h2><button id="settings-close" aria-label="Закрыть">×</button></div>
-      <div class="settings-section">
-        <div class="settings-label">Пряжа</div>
-        <div class="palette">
-          <button data-yarn="blue" class="chosen" style="--c:#73a9d3" aria-label="Голубая"></button>
-          <button data-yarn="cream" style="--c:#e8d2ac" aria-label="Молочная"></button>
-          <button data-yarn="rose" style="--c:#cf8e9c" aria-label="Розовая"></button>
-          <button data-yarn="sage" style="--c:#8eaa92" aria-label="Зелёная"></button>
-          <button data-yarn="lavender" style="--c:#9f90bf" aria-label="Сиреневая"></button>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <div class="toolbar" aria-label="Управление вязанием">
+      <button id="undo" class="small-button" title="Отменить петлю — 2, Backspace" aria-label="Отменить петлю">↶</button>
+      <button id="add" class="primary-button"><kbd>1</kbd><span>Воздушная петля</span><span class="soft-knot">⌁</span></button>
+      <button id="reset" class="small-button" title="Начать заново — R" aria-label="Начать заново">⟲</button>
+    </div>
+    <p class="footer-note">Перетаскивай стол · Колёсико — приближение к курсору</p>
+    <div id="settings" class="settings-layer" hidden>
+      <section class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-heading">
+        <header><h2 id="settings-heading">Настройки мастерской</h2><button id="settings-close" aria-label="Закрыть">×</button></header>
+        <div class="section"><div class="section-title">Цвет пряжи</div><div id="palette" class="palette">
+          <button data-color="blue" class="chosen" aria-label="Голубой" style="--yarn:#89b9dc"></button>
+          <button data-color="cream" aria-label="Слоновая кость" style="--yarn:#e9d6b4"></button>
+          <button data-color="rose" aria-label="Пыльная роза" style="--yarn:#dba6b7"></button>
+          <button data-color="sage" aria-label="Шалфей" style="--yarn:#a9c1a9"></button>
+          <button data-color="lavender" aria-label="Лаванда" style="--yarn:#b6a7d0"></button>
+        </div></div>
+        <div class="section">
+          <label for="speed" class="section-title">Скорость вязания</label>
+          <input id="speed" type="range" min="700" max="3500" step="100" value="1550">
+          <div class="range-ends"><span>Быстро</span><span>Неторопливо</span></div>
         </div>
-      </div>
-      <div class="settings-section">
-        <label for="speed" class="settings-label">Скорость движения крючка</label>
-        <input type="range" id="speed" min="700" max="3500" step="100" value="1900">
-        <div class="range-tips"><span>Быстро</span><span>Медленно</span></div>
-      </div>
-      <div class="settings-section">
-        <label class="switch-line"><input id="sound" type="checkbox" checked> Тихие звуки пряжи</label>
-        <label class="switch-line"><input id="guide" type="checkbox"> Подсветить текущую петлю</label>
-        <label class="switch-line"><input id="show-hook" type="checkbox" checked> Показывать крючок</label>
-        <div class="option-hint">Если скрыть крючок, красная точка покажет, какую именно часть нити он захватил и куда тянет.</div>
-      </div>
-      <div class="settings-section">
-        <div class="settings-label">Управление</div>
-        <div class="key-row"><kbd>ЛКМ</kbd><span>Вращать обзор</span></div>
-        <div class="key-row"><kbd>СКМ + движение</kbd><span>Перемещать стол влево-вправо и вверх-вниз</span></div>
-        <div class="key-row"><kbd>Колёсико</kbd><span>Масштаб к курсору мыши</span></div>
-        <div class="key-row"><kbd>1</kbd><span>Сделать воздушную петлю</span></div>
-        <div class="key-row"><kbd>2</kbd><span>Распустить одну петлю</span></div>
-        <div class="key-row"><kbd>Backspace</kbd><span>Распустить</span></div>
-        <div class="key-row"><kbd>R</kbd><span>Начать цепочку заново</span></div>
-        <div class="key-row"><kbd>Space</kbd><span>Следующий ряд — в следующей версии</span></div>
-        <div class="key-row"><kbd>Esc</kbd><span>Закрыть настройки</span></div>
-      </div>
-      <button id="reset-view" class="settings-bottom">Сбросить положение камеры</button>
-      <div class="build-note">Alpha 0.6: цепочка V-образных звеньев с задними переходами. Для проверки движения: <a href="https://www.youtube.com/watch?v=DOxxeaELAS4" target="_blank" rel="noopener noreferrer">медленное видео воздушной петли</a> (VeryPink Knits). Визуальная точность требует оценки вязальщиком.</div>
+        <div class="section">
+          <label class="switch"><input id="show-hook" type="checkbox" checked> Показывать крючок</label>
+          <label class="switch"><input id="guide" type="checkbox"> Подсветить рабочую петлю</label>
+          <label class="switch"><input id="sound" type="checkbox"> Тихий звук завершения</label>
+        </div>
+        <div class="section">
+          <div class="section-title">Управление</div>
+          <p class="shortcut"><kbd>1</kbd><span>Новая воздушная петля, можно нажимать подряд</span></p>
+          <p class="shortcut"><kbd>2</kbd><span>Отменить операцию или готовую петлю</span></p>
+          <p class="shortcut"><kbd>R</kbd><span>Новая цепочка</span></p>
+          <p class="shortcut"><kbd>Space</kbd><span>Зарезервировано для следующего ряда</span></p>
+        </div>
+        <button id="reset-view" class="reset-view">Вернуть камеру</button>
+        <p class="reference">Форма цепочки сверена с <a href="https://www.anniesattic.com/stitch-guide/crochet-guide/crochet-how-tos/how-to-work-into-the-chain" target="_blank" rel="noopener noreferrer">фотографиями дужек</a> и <a href="https://www.crochet.com/learning-center/basic-stitches/chain" target="_blank" rel="noopener noreferrer">пошаговым уроком</a>. Это новая рисованная модель, не физическая симуляция.</p>
+      </section>
     </div>
-  </div>
-</div>
-<script type="module" src="/src/main.ts"></script>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

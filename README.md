@@ -1,67 +1,41 @@
-# Crochet — игровой прототип вязания Alpha 0.6
+# Crochet — PixiJS 2.5D rebuild
 
-**Играть:** https://alexaxel.github.io/crochet/
+**Play:** https://alexaxel.github.io/crochet/
 
-Весь экран — рабочий стол, клубок, пряжа и крючок. Старая XPBD-система не используется в игровом вязании: при свободной физике связанные воздушные петли распадались и теряли форму.
+## Previous version preserved
 
-## Источники и исправление вязального движения
+The complete Alpha 0.6 source is frozen in [archive/alpha-0.6-pre-rebuild](https://github.com/AlexAxel/crochet/tree/archive/alpha-0.6-pre-rebuild).
 
-Предыдущая Alpha 0.6 содержала грубую геометрическую ошибку: вместо цепочки из **лицевых V-образных звеньев** код строил условные замкнутые петли и связывал их несмежными сглаженными линиями. Это давало визуальные «волшебные» пересечения даже без динамической физики.
+This is a **new implementation**, not another coordinate adjustment in the old Three.js or XPBD code. The gameplay entrypoint now imports only the new semantic timeline and PixiJS artwork; the original files remain as inactive history.
 
-В Alpha 0.6 изменены **реальные опорные данные**, а не один цвет/шейдер:
+## New architecture
 
-- Старт — перекрещённый скользящий узел с одной рабочей петлёй на крючке. Ничего из этого не учитывается как CH #1.
-- Каждое зафиксированное звено цепочки содержит открытое V из двух лицевых дужек и отдельный задний переход к следующему звену; они имеют реальные разные координаты глубины и рисуются отдельными отрезками. Видимая цепочка растёт от стартового узла к крючку.
-- Во время операции крючок захватывает рабочую нить, проводит новую дужку **позади -> сквозь -> наружу** предыдущей рабочей петли, после завершения старая превращается в фиксированное лицевое V.
-- 3D и 2,5D рисуют **те же сегменты**, не склеивают все изломы в один CatmullRomCurve и не создают лишние «линии телепортации».
-- Никакой XPBD-физики для готовой цепочки: достигнутая форма остаётся неизменной.
+- **src/core/chainSession.ts**: semantic crochet operation flow (slip knot and one live loop; hook approach, yarn over, draw through, seat). Every completed operation adds one immutable chain link. Rapid keypresses queue up to 20 stitches; undo and reset are deterministic.
+- **src/render/PixiTable.ts**: original PixiJS 8 tabletop artwork; front loops and rear bumps hand-drawn as interleaving rounded strands with shaded cotton-like threads and no old 3D geometry. Table pan and zoom-to-cursor.
+- **index.html, src/main.ts and src/style.css**: separate minimal studio with hideable hook and red contact point, speed, five colors and sound.
 
-**Сверялся с:**
-1. [Craft Yarn Council — How to Make a Chain Stitch](https://craftyarncouncil.com/mar06_crochet.html) — slip knot, yarn-over от задней стороны к передней, вытягивание через рабочую петлю.
-2. [Annie's Crochet Stitch Guide](https://www.anniesattic.com/stitch-guide/crochet-guide/crochet-how-tos/how-to-form-a-slip-knot-and-chain-stitch) — направление захвата, поворот крючка и натяжение основания.
-3. [VeryPink Knits — Slow Motion Crochet Chain (YouTube)](https://www.youtube.com/watch?v=DOxxeaELAS4) — замедленная демонстрация движения.
-4. [Yarn Forge](https://github.com/benjamin-cates/yarn-forge) — открытая модель графа стежков: цепочка как последовательность связанных CH-узлов; это НЕ исходник физического захвата.
-5. [Crocheteer](https://github.com/Oloqq/crocheteer-poc) — открытая визуализация схем и численное моделирование полотен; не готовая анимация крючка.
-6. [Stitch Meshes (Cornell, 2012)](https://www.cs.cornell.edu/projects/stitchmeshes/) — пример моделирования **уже сформированных вязаных полотен** по структурной сетке, а не симулятор последовательных ручных воздушных петель.
+## References checked BEFORE rebuilding
 
-**Всё ещё не считаем подтверждённым:** математическая геометрия пересечений конкретной пряжи и реалистичность самой анимации. Структура и направление исправлены по источникам, но профессиональную визуальную приёмку это не заменяет.
+- [Annie's: How to Work Into the Chain](https://www.anniesattic.com/stitch-guide/crochet-guide/crochet-how-tos/how-to-work-into-the-chain) — real front V and back bump anatomy.
+- [Made From Yarn: Chain Stitch Anatomy](https://madefromyarn.com/crochet-chain-stitch/) — macro photography of actual links, starting knot and working yarn.
+- [Crochet Foundry: Chain Anatomy](https://crochetfoundryblog.com/ch-chain-crochet-tutorial/) — anatomy of front/back loops and lower bump.
+- [Crochet.com: How to Chain](https://www.crochet.com/learning-center/basic-stitches/chain) — yarn-over and pull-through in steps.
+- [Vogue Knitting: First Steps](https://www.vogueknitting.com/pattern-help/how-to/learn-to-crochet/first-steps/) — turning the hook and controlling tension.
+- [VeryPink Knits slow-motion crochet video](https://www.youtube.com/watch?v=DOxxeaELAS4) — reference for moving yarn and hook.
+- [Yarn Forge on GitHub](https://github.com/benjamin-cates/yarn-forge) — useful *stitch graph* reference, NOT a ready-made visual hook simulator.
+- [Cornell Stitch Meshes](https://www.cs.cornell.edu/projects/stitchmeshes/) — research into existing knitted textiles, NOT a chain-stitch animation engine.
 
-## В новой версии
+No reference image is shipped as a copied game asset. The visible braid is drawn programmatically.
 
-- Каждая готовая воздушная петля сохраняется как **фиксированное звено** в единой структуре. Последующие операции не деформируют уже завершённые звенья.
-- Анимируется **только рабочая петля**: крючок подходит, захватывает нить, ведёт её за старую петлю, протягивает через отверстие и затягивает. Новое звено фиксируется лишь по окончании операции.
-- Можно нажать **1** много раз подряд: команды ставятся в очередь. Система сохраняет цепочку из **десяти и более петель**, до ограничения 14, вместо выбрасывания ввода.
-- **Два независимых отображения одной и той же структуры** прямо на столе: **3D** (Three.js, объёмная пряжа и поворот камеры) и **2,5D** (стилизованная рисованная Canvas2D-пряжа, тени, слоистые линии, отдельный рендер и панорамирование). Переключатель сверху слева. 2,5D не является скриншотом 3D.
-- В обоих режимах работает скрытие крючка: красная точка указывает место захвата; управление и физические данные не меняются от выбранного режима.
+## Acceptance criteria
 
-## Управление
+1. Start with a slip knot, loose tail and one active loop on the hook; completed chain count is zero.
+2. One yarn-over and pull-through produces exactly one CH. One working loop remains.
+3. Ten to twenty consecutive stitches accumulate into a compact interlocking braid rather than detached rings. Previous links never vanish or deform due to a physics glitch.
+4. Repeated key 1 queues stitches; 2/Backspace undoes; R resets; Space reserved. Mouse drags the desk; scroll zooms toward pointer.
 
-- **1** — добавить воздушную петлю (можно нажать несколько раз подряд).
-- **2 / Backspace** — распустить последнюю петлю; во время анимации отменить текущую.
-- **R** — начать сначала.
-- **Space** пока зарезервирован для следующего ряда.
-- **3D:** ЛКМ вращает обзор; зажатое колёсико или ПКМ перемещает стол; прокрутка масштабирует к курсору.
-- **2,5D:** перетаскивание перемещает стол; прокрутка масштабирует к курсору.
-- **Шестерёнка:** цвета, скорость, показывать/скрыть крючок, подсветка активной петли, звук.
+**Limitation:** this is a stylized deterministic visual reconstruction, not a numerically exact yarn-fiber path. The automated tests prove operation counts and stable links, **not** full crochet realism. The visual result still needs review against source photographs and a crochet expert.
 
-## Техническая архитектура
+## Development
 
-- `src/core/stableChain.ts`: единый детерминированный источник звеньев, перемещаемой рабочей петли и фаз протягивания. Готовые звенья содержат ссылки на основание и пространственный путь нити, сохраняются неизменными.
-- `src/render/ChainTable.ts`: 3D-вид из тех же координат; управление очередью операций, камерой и режимами.
-- `src/render/FlatTable.ts`: собственный 2,5D Canvas2D-рендер, использует тот же кадр модели, создаёт нарисованное игровое оформление, не нуждается в отдельном движке физики.
-- `tests/stableChain.test.ts`: десять последовательных воздушных петель, стабильность старых звеньев, процедура протягивания, распускание и предел цепочки.
-
-Прежняя XPBD-модель `src/core/yarnPhysics.ts` оставлена в репозитории для исследований, но **не подключена к игровому циклу Alpha 0.6**.
-
-**Ограничение:** это контролируемая геометрическая анимация, а не научная модель натяжения и контактов пряжи. Подлинность всех пересечений, направлений подхвата и формы петель ещё должна быть подтверждена вязальщиком. Алгоритм теперь воспроизводим и не уничтожает связанные петли, что позволит проверять и исправлять технику по конкретному видео.
-
-## Разработка и публикация
-
-```sh
-npm install
-npm test
-npm run dev
-npm run build
-```
-
-После слияния в `main` GitHub Actions создаёт `main/docs` и GitHub Pages автоматически публикует новую версию.
+Run npm install, npm test, npm run build or npm run build:pages. After merging to main, GitHub Actions compiles docs and GitHub Pages publishes the game.
