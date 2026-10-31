@@ -57,6 +57,7 @@ el('settings').addEventListener('click',e=>{if(e.target===el('settings'))setting
 el('reset-view').addEventListener('click',()=>table.resetView());
 input('speed').addEventListener('input',()=>table.setSpeed(Number(input('speed').value)));
 input('guide').addEventListener('change',()=>table.setGuide(input('guide').checked));
+input('show-hook').addEventListener('change',()=>table.setHookVisible(input('show-hook').checked));
 document.querySelectorAll<HTMLButtonElement>('[data-yarn]').forEach(b=>{
   b.addEventListener('click',()=>{
     const value=b.dataset.yarn!;
