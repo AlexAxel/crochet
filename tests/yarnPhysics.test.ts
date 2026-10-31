@@ -111,6 +111,23 @@ describe('physical yarn: fixed segment lengths and real contact solver',()=>{
     const p=r.positions[material];
     expect(Math.hypot(r.frame.hook.x-p.x,r.frame.hook.y-p.y,r.frame.hook.z-p.z)).toBeLessThan(.001);
  });
+ it('a caught strand actually pulls adjacent physical filament particles along with the hook',()=>{
+   const r=new PhysicalYarn();
+   expect(r.begin()).toBe(true);
+   r.setPullProgress(.28);
+   for(let i=0;i<10;i++)r.simulate(1/120);
+   const index=r.frame.graspIndex!;
+   const neighbor=r.positions[index+2];
+   const origin={...neighbor};
+   for(const progress of [.36,.48,.61,.73,.84]){
+     r.setPullProgress(progress);
+     for(let i=0;i<12;i++)r.simulate(1/120);
+     expect(r.frame.grasped).toBe(true);
+     expect(r.frame.graspDistance).toBeLessThan(.001);
+   }
+   const displaced=Math.hypot(neighbor.x-origin.x,neighbor.y-origin.y,neighbor.z-origin.z);
+   expect(displaced).toBeGreaterThan(.04);
+ });
  it('no stitch may be committed until captured yarn genuinely crosses the live aperture',()=>{
     const r=new PhysicalYarn();
     expect(r.begin()).toBe(true);
