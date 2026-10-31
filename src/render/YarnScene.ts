@@ -31,6 +31,7 @@ export class YarnScene {
   private ro:ResizeObserver;
   private frame=0;
   private previousCount=0;
+  private activeCurve?:THREE.CatmullRomCurve3;
   private start=0;
   private startFraction=1;
   private playing=false;
@@ -92,6 +93,7 @@ export class YarnScene {
   setColor(name:string){
     if(!palette[name])return;
     this.material.color.set(palette[name]);
+    this.ball.traverse(obj=>{if(obj instanceof THREE.Mesh && obj.material!==this.material && obj.material instanceof THREE.MeshStandardMaterial) obj.material.color.set(palette[name]);});
   }
   showDebug(v:boolean){this.debugGroup.visible=v;}
   resetCamera(){this.controls.reset();this.camera.position.set(0,-2.2,15);this.controls.target.set(0,0,0);this.camera.zoom=1;this.camera.updateProjectionMatrix();}
@@ -104,11 +106,13 @@ export class YarnScene {
       const curve=new THREE.CatmullRomCurve3(data.points.map(vect),false,'centripetal',.5);
       const map=this.material.map;
       if(map){map.repeat.set(Math.max(2,curve.getLength()*5),1);map.needsUpdate=true;}
+      this.activeCurve=curve;
       this.yarn=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(120,data.points.length*8),.087,10),this.material);
       this.scene.add(this.yarn);
       this.startFraction=withAnimation&&this.previousCount>0&&this.previousCount<data.points.length?this.previousCount/data.points.length:1;
       this.playing=this.startFraction<1;this.start=performance.now();
     }
+    if(data.points.length<2)this.activeCurve=undefined;
     this.previousCount=data.points.length;
     this.tool.position.copy(vect(data.tip));
     const tail=new THREE.CatmullRomCurve3([
@@ -144,6 +148,15 @@ export class YarnScene {
       if(index){
         const fraction=this.startFraction+(1-this.startFraction)*part;
         this.yarn.geometry.setDrawRange(0,Math.floor(index.count*fraction/30)*30);
+      }
+      if(this.activeCurve){
+        const position=this.activeCurve.getPointAt(Math.max(0,Math.min(1,this.startFraction+(1-this.startFraction)*part)));
+        this.tool.position.copy(position);
+        if(this.trailing){
+          this.trailing.geometry.dispose();
+          const loose=new THREE.CatmullRomCurve3([position,new THREE.Vector3(position.x+.4,position.y+.3,.35),new THREE.Vector3(3.5,-1,.3),new THREE.Vector3(4.2,-1.5,.3)]);
+          this.trailing.geometry=new THREE.TubeGeometry(loose,50,.045,7);
+        }
       }
       if(part>=1)this.playing=false;
     }else if(this.yarn) this.yarn.geometry.setDrawRange(0,Infinity);
