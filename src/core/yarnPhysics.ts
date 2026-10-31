@@ -23,6 +23,8 @@ export type PhysicsSnapshot={
   outlet:number;
   count:number;
   contactFreeze:number;
+  rest:number[];
+  bends:number[];
 };
 export type PhysicsFrame={
   yarn:readonly Vector[];
@@ -110,7 +112,7 @@ type Pull={
 export class PhysicalYarn{
   readonly spacing=SEGMENT;
   readonly radius=RADIUS;
-  readonly maxCompleted=7;
+  readonly maxCompleted=5;
   positions:Vector[]=[];
   previous:Vector[]=[];
   private rest:number[]=[];
@@ -154,12 +156,45 @@ export class PhysicalYarn{
   }
   private snapshot():PhysicsSnapshot{
     return {positions:this.positions.map(copy),previous:this.previous.map(copy),
-      active:this.crown,outlet:this.outlet,count:this.stitches,contactFreeze:this.lastFreeze};
+      active:this.crown,outlet:this.outlet,count:this.stitches,contactFreeze:this.lastFreeze,
+      rest:[...this.rest],bends:[...this.bends]};
   }
   private restore(s:PhysicsSnapshot){
     this.positions=s.positions.map(copy);this.previous=s.previous.map(copy);
     this.crown=s.active;this.outlet=s.outlet;this.stitches=s.count;this.lastFreeze=s.contactFreeze;
+    this.rest=[...s.rest];this.bends=[...s.bends];this.fixedEnd=this.positions.length-1;
     this.pull=null;this.hook=add(this.positions[this.crown],vec(0,0,.2));
+  }
+  private aperture():Vector {
+    // The *hole* lies between the arms of the LIVE loop, not on its crown.
+    const l=this.positions[Math.max(0,this.crown-4)];
+    const r=this.positions[Math.min(this.positions.length-1,this.crown+4)];
+    return mix(l,r,.5);
+  }
+  /**
+   * Physically pay out extra material from a loose winding hidden within
+   * the skein instead of stretching the existing yarn to make a new loop.
+   * The free-standing part of the rope keeps all its original material IDs.
+   */
+  private feedFromSkein(){
+    const last=this.positions.length-1;
+    const end=copy(this.positions[last]);
+    const before=copy(this.positions[last-1]);
+    const guide:Vector[]=[
+      before,
+      vec(4.98,-1.85,.09),vec(5.22,-1.82,.07),
+      vec(5.34,-2.03,.07),vec(5.16,-2.24,.08),
+      vec(4.92,-2.16,.07),vec(4.92,-1.97,.10),
+      vec(5.14,-1.93,.10),end
+    ];
+    const extra=sampleSeed(guide).slice(1,-1);
+    this.positions.splice(last,0,...extra.map(copy));
+    this.previous.splice(last,0,...extra.map(copy));
+    const replacement=[before,...extra,end];
+    const newLengths=replacement.slice(1).map((p,i)=>stepLen(p,replacement[i]));
+    this.rest.splice(last-1,1,...newLengths);
+    this.bends=this.positions.slice(2).map((p,i)=>stepLen(p,this.positions[i]));
+    this.fixedEnd=this.positions.length-1;
   }
   begin():boolean{
     if(this.pull||this.stitches>=this.maxCompleted)return false;
@@ -167,9 +202,10 @@ export class PhysicalYarn{
     // selecting a fabricated path for the resulting loop.
     const material=Math.min(this.fixedEnd-18,this.outlet+Math.max(7,Math.round(.53/SEGMENT)));
     if(material<=this.outlet)return false;
-    const entry=copy(this.positions[this.crown]);
+    const entry=this.aperture();
     const start=copy(this.positions[material]);
     const before=this.snapshot();
+    this.feedFromSkein();
     this.pull={material,entry,start,progress:0,before,oldLoop:this.crown};
     this.hook=add(entry,vec(0,0,.18));
     return true;
@@ -336,6 +372,11 @@ export class PhysicalYarn{
       const a=this.positions[i],b=this.positions[i+1];
       for(let j=i+4;j<n-1;j++){
         const c=this.positions[j],d=this.positions[j+1];
+        // Stored winding material inside the skein is allowed to overlap
+        // because the solid skein hides it; once drawn out, contacts apply.
+        if(i>this.lastFreeze && j>this.lastFreeze &&
+          Math.hypot(a.x-5.05,a.y+2.05)<.65 &&
+          Math.hypot(c.x-5.05,c.y+2.05)<.65)continue;
         if(Math.min(a.x,b.x)>Math.max(c.x,d.x)+minDist||
           Math.min(c.x,d.x)>Math.max(a.x,b.x)+minDist||
           Math.min(a.y,b.y)>Math.max(c.y,d.y)+minDist||
