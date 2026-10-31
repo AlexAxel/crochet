@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {PhysicalYarn, type Vector, type PhysicsFrame} from '../core/yarnPhysics';
+import {inspectionPoint} from './inspectionPoint';
 
 export const COLORWAYS:Record<string,string>={
   blue:'#73a9d3',cream:'#e8d2ac',rose:'#cf8e9c',sage:'#8eaa92',lavender:'#9f90bf'
@@ -126,6 +127,8 @@ export class ChainTable{
   private camera=new THREE.OrthographicCamera(-8,8,5,-5,.1,120);
   private controls:OrbitControls;
   private hook=createHook();
+  private hookVisible=true;
+  private graspMarker:THREE.Sprite;
   private group=new THREE.Group();
   private yarn?:THREE.Mesh;
   private yarnShadow?:THREE.Mesh;
@@ -158,7 +161,20 @@ export class ChainTable{
     this.camera.position.set(0,-3.65,17.5);this.camera.lookAt(0,-.15,0);
     this.controls=new OrbitControls(this.camera,this.renderer.domElement);
     this.controls.enableDamping=true;this.controls.dampingFactor=.065;
-    this.controls.enablePan=false;this.controls.minZoom=.7;this.controls.maxZoom=4;
+    // Left drag: inspect in 3D. Middle/right drag: move freely over the table.
+    // The wheel remains zoom, but now focuses the actual mouse position.
+    this.controls.enablePan=true;this.controls.screenSpacePanning=true;
+    this.controls.zoomToCursor=true;
+    this.controls.mouseButtons={
+      LEFT:THREE.MOUSE.ROTATE,
+      MIDDLE:THREE.MOUSE.PAN,
+      RIGHT:THREE.MOUSE.PAN
+    };
+    this.controls.minZoom=.7;this.controls.maxZoom=8;
+    // Prevent browser middle-click auto-scroll while panning the tabletop.
+    this.renderer.domElement.addEventListener('auxclick',event=>{
+      if(event.button===1)event.preventDefault();
+    });
     this.controls.minPolarAngle=0;this.controls.maxPolarAngle=Math.PI*.42;
     this.controls.maxAzimuthAngle=Math.PI*.36;
     this.controls.minAzimuthAngle=-Math.PI*.36;
@@ -180,6 +196,32 @@ export class ChainTable{
     this.scene.add(this.ball);
     this.hook.traverse(obj=>{if(obj instanceof THREE.Mesh)obj.castShadow=true;});
     this.scene.add(this.hook);
+    // Screen-facing inspection dot. It is only VISUAL and never touches
+    // solver constraints; the hook keeps operating when hidden.
+    const markerCanvas=document.createElement('canvas');
+    markerCanvas.width=128;markerCanvas.height=128;
+    const markerCtx=markerCanvas.getContext('2d')!;
+    const glow=markerCtx.createRadialGradient(64,64,8,64,64,55);
+    glow.addColorStop(0,'rgba(230,25,36,.42)');
+    glow.addColorStop(.35,'rgba(234,31,44,.28)');
+    glow.addColorStop(1,'rgba(238,30,44,0)');
+    markerCtx.fillStyle=glow;
+    markerCtx.fillRect(0,0,128,128);
+    markerCtx.beginPath();markerCtx.arc(64,64,23,0,Math.PI*2);
+    markerCtx.fillStyle='#ff2840';markerCtx.fill();
+    markerCtx.lineWidth=6;markerCtx.strokeStyle='#fff7f2';markerCtx.stroke();
+    markerCtx.beginPath();markerCtx.arc(64,64,7,0,Math.PI*2);
+    markerCtx.fillStyle='#ffffff';markerCtx.fill();
+    const markerTexture=new THREE.CanvasTexture(markerCanvas);
+    markerTexture.colorSpace=THREE.SRGBColorSpace;
+    this.graspMarker=new THREE.Sprite(new THREE.SpriteMaterial({
+      map:markerTexture,transparent:true,depthTest:false,depthWrite:false,
+      toneMapped:false
+    }));
+    this.graspMarker.scale.set(.48,.48,1);
+    this.graspMarker.renderOrder=1000;
+    this.graspMarker.visible=false;
+    this.scene.add(this.graspMarker);
     const gmat=new THREE.MeshBasicMaterial({color:'#f7d29c',transparent:true,opacity:.55,depthTest:false});
     this.guide=new THREE.Mesh(new THREE.TorusGeometry(.25,.018,6,48),gmat);
     this.guide.visible=false;this.scene.add(this.guide);
@@ -198,6 +240,16 @@ export class ChainTable{
     this.scene.add(this.ball);
   }
   setGuide(v:boolean){this.showGuide=v;this.guide.visible=v&&this.moving;}
+  setHookVisible(visible:boolean){
+    this.hookVisible=visible;
+    this.updateInspectionMarker(this.physics.frame);
+  }
+  private updateInspectionMarker(frame:PhysicsFrame){
+    this.hook.visible=this.hookVisible;
+    const point=inspectionPoint(frame,this.hookVisible);
+    this.graspMarker.visible=point!==null;
+    if(point)this.graspMarker.position.copy(xyz(point));
+  }
   resetView(){
     this.camera.zoom=1;
     this.camera.position.set(0,-3.65,17.5);
@@ -256,6 +308,7 @@ export class ChainTable{
     this.hook.position.copy(xyz(frame.hook));
     this.hook.rotation.z=frame.phase==='catch'?.10:frame.phase==='draw'?-.12:0;
     this.hook.rotation.y=frame.grasped?-.22:0;
+    this.updateInspectionMarker(frame);
     this.guide.position.copy(xyz(frame.active));
     this.guide.position.z=.45;
     this.guide.visible=this.showGuide&&this.moving;
@@ -283,6 +336,8 @@ export class ChainTable{
   dispose(){
     cancelAnimationFrame(this.frameId);this.resizeObserver.disconnect();
     this.controls.dispose();this.renderer.dispose();this.fibers.dispose();
+    this.graspMarker.material.map?.dispose();this.graspMarker.material.dispose();
+    this.graspMarker.geometry.dispose();
   }
   get count(){return this.physics.completed;}
   get busy(){return this.moving;}
