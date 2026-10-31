@@ -263,7 +263,7 @@ export class ChainTable{
       this.updateRope(this.physics.frame);
       if(this.moving&&t>=1){
         this.physics.complete();this.moving=false;
-        this.updateRope(this.machine.frame);
+        this.updateRope(this.physics.frame);
         this.onChange?.(this.physics.completed,false);this.onComplete?.();
       }
     }
