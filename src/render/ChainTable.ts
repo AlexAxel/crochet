@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {ChainMachine, strandFrame, type Vec3, type StrandFrame, MAX_CHAINS, FIRST_X, PITCH} from '../core/chainMechanics';
+import {PhysicalYarn, type Vector, type PhysicsFrame} from '../core/yarnPhysics';
 
 export const COLORWAYS:Record<string,string>={
   blue:'#73a9d3',cream:'#e8d2ac',rose:'#cf8e9c',sage:'#8eaa92',lavender:'#9f90bf'
 };
-const xyz=(p:Vec3)=>new THREE.Vector3(p.x,p.y,p.z);
+const xyz=(p:Vector)=>new THREE.Vector3(p.x,p.y,p.z);
 const metal=new THREE.MeshStandardMaterial({color:'#d5dce0',metalness:.83,roughness:.23});
 const woodHandle=new THREE.MeshStandardMaterial({color:'#bb8566',metalness:0,roughness:.57});
 const paper=new THREE.MeshStandardMaterial({color:'#e7d8c0',roughness:1});
@@ -116,7 +116,7 @@ function makeAccessoryGroup(){
 }
 
 export class ChainTable{
-  readonly machine=new ChainMachine();
+  readonly physics=new PhysicalYarn();
   private renderer:THREE.WebGLRenderer;
   private scene=new THREE.Scene();
   private camera=new THREE.OrthographicCamera(-8,8,5,-5,.1,120);
@@ -134,9 +134,10 @@ export class ChainTable{
   private resizeObserver:ResizeObserver;
   private frameId=0;
   private startTime=0;
-  private lengthMs=2800;
+  private lengthMs=4200;
   private lastUpdate=0;
   private moving=false;
+  private settleUntil=0;
   private showGuide=false;
   private guide:THREE.Mesh;
   onChange?:(count:number,busy:boolean)=>void;
@@ -181,7 +182,7 @@ export class ChainTable{
     this.scene.add(this.group);
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(container);
-    this.resize();this.updateRope(this.machine.frame);this.loop();
+    this.resize();this.updateRope(this.physics.frame);this.loop();
   }
   setSpeed(ms:number){this.lengthMs=Math.max(900,Math.min(6000,ms));}
   setColor(name:string){
@@ -200,20 +201,21 @@ export class ChainTable{
     this.camera.updateProjectionMatrix();this.controls.update();
   }
   start(){
-    if(!this.machine.begin())return false;
-    this.startTime=performance.now();this.moving=true;
-    this.onChange?.(this.machine.count,true);
+    if(!this.physics.begin())return false;
+    this.startTime=performance.now();this.moving=true;this.settleUntil=0;
+    this.onChange?.(this.physics.completed,true);
     return true;
   }
   unravel(){
     if(this.moving){this.moving=false;}
-    const ok=this.machine.undo();
-    this.updateRope(this.machine.frame);
-    this.onChange?.(this.machine.count,false);
+    this.settleUntil=performance.now()+800;
+    const ok=this.physics.unravel();
+    this.updateRope(this.physics.frame);
+    this.onChange?.(this.physics.completed,false);
     return ok;
   }
   reset(){
-    this.moving=false;this.machine.reset();this.updateRope(this.machine.frame);
+    this.moving=false;this.settleUntil=0;this.physics.reset();this.updateRope(this.physics.frame);
     this.onChange?.(0,false);this.resetView();
   }
   private resize(){
@@ -226,44 +228,46 @@ export class ChainTable{
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w,h,false);
   }
-  private updateRope(frame:StrandFrame){
+  private updateRope(frame:PhysicsFrame){
     if(this.yarn){
       this.group.remove(this.yarn);this.yarn.geometry.dispose();
     }
     if(this.yarnShadow){
       this.group.remove(this.yarnShadow);this.yarnShadow.geometry.dispose();
     }
-    const path=frame.vertices.map(xyz);
+    const path=frame.yarn.map(xyz);
     const curve=new THREE.CatmullRomCurve3(path,false,'centripetal',.38);
-    const samples=Math.max(144,path.length*5);
-    const geo=new THREE.TubeGeometry(curve,samples,.086,10,false);
+    const samples=Math.max(144,path.length*4);
+    const geo=new THREE.TubeGeometry(curve,samples,.052,10,false);
     const length=curve.getLength();
     this.fibers.repeat.set(Math.max(8,Math.round(length*6)),1);
     this.fibers.needsUpdate=true;
     this.yarn=new THREE.Mesh(geo,this.yarnMat);
     this.yarn.castShadow=true;this.group.add(this.yarn);
     const shadowPts=path.map(p=>new THREE.Vector3(p.x+.06,p.y-.07,-.255));
-    this.yarnShadow=swept(shadowPts,.09,this.shadowMaterial);
+    this.yarnShadow=swept(shadowPts,.052,this.shadowMaterial);
     this.group.add(this.yarnShadow);
     this.hook.position.copy(xyz(frame.hook));
-    this.hook.rotation.z=frame.stage==='catch'?.15:frame.stage==='pull'?-.17:0;
-    this.guide.position.copy(xyz(frame.priorLoop));
+    this.hook.rotation.z=frame.phase==='catch'?.15:frame.phase==='draw'?-.17:0;
+    this.guide.position.copy(xyz(frame.active));
     this.guide.position.z=.45;
     this.guide.visible=this.showGuide&&this.moving;
   }
   private loop=()=>{
     this.frameId=requestAnimationFrame(this.loop);
     const now=performance.now();
-    if(this.moving&&now-this.lastUpdate>29){
+    if(now-this.lastUpdate>29 && (this.moving || now<this.settleUntil)){
+      const elapsed=Math.min(.033,Math.max(.002,(now-this.lastUpdate)/1000));
       this.lastUpdate=now;
       const t=Math.min(1,(now-this.startTime)/this.lengthMs);
       const eased=t*t*(3-2*t);
-      this.machine.setProgress(eased);
-      this.updateRope(this.machine.frame);
-      if(t>=1){
-        this.machine.finish();this.moving=false;
-        this.updateRope(this.machine.frame);
-        this.onChange?.(this.machine.count,false);this.onComplete?.();
+      if(this.moving)this.physics.setPullProgress(eased);
+      this.physics.simulate(elapsed);
+      this.updateRope(this.physics.frame);
+      if(this.moving&&t>=1){
+        this.physics.complete();this.moving=false;this.settleUntil=now+1400;
+        this.updateRope(this.physics.frame);
+        this.onChange?.(this.physics.completed,false);this.onComplete?.();
       }
     }
     this.controls.update();
@@ -273,7 +277,7 @@ export class ChainTable{
     cancelAnimationFrame(this.frameId);this.resizeObserver.disconnect();
     this.controls.dispose();this.renderer.dispose();this.fibers.dispose();
   }
-  get count(){return this.machine.count;}
+  get count(){return this.physics.completed;}
   get busy(){return this.moving;}
-  get capacity(){return MAX_CHAINS;}
+  get capacity(){return this.physics.maxCompleted;}
 }
