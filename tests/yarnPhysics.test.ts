@@ -35,6 +35,13 @@ describe('physical yarn: fixed segment lengths and real contact solver',()=>{
    expect(r.begin()).toBe(true);
    r.setPullProgress(.8);
    expect(r.complete()).toBe(false);
+   // It is not enough to animate straight to the end: a real bight
+   // must attach to the hook and traverse both sides of the loop.
+   r.setPullProgress(.35);
+   for(let i=0;i<20;i++)r.simulate(1/120);
+   r.setPullProgress(.78);
+   for(let i=0;i<20;i++)r.simulate(1/120);
+   expect(r.frame.passedThrough).toBe(true);
    r.setPullProgress(1);
    for(let i=0;i<30;i++)r.simulate(1/120);
    expect(r.complete()).toBe(true);
@@ -51,6 +58,15 @@ describe('physical yarn: fixed segment lengths and real contact solver',()=>{
    expect(hit.distance).toBeCloseTo(.03,4);
    expect(hit.s).toBeCloseTo(.5);
    expect(hit.t).toBeCloseTo(.5);
+ });
+ it('does not ignore an exact self-intersection between two physical yarn edges',()=>{
+   const hit=PhysicalYarn.nearestSegments(
+     {x:-1,y:0,z:0},{x:1,y:0,z:0},
+     {x:0,y:-1,z:0},{x:0,y:1,z:0}
+   );
+   expect(hit.distance).toBeLessThan(1e-8);
+   const normalSize=Math.hypot(hit.normal.x,hit.normal.y,hit.normal.z);
+   expect(normalSize).toBeGreaterThan(.99);
  });
  it('pays out additional filament from skein instead of lengthening existing segments',()=>{
    const r=new PhysicalYarn();
@@ -71,17 +87,75 @@ describe('physical yarn: fixed segment lengths and real contact solver',()=>{
    for(let round=0;round<2;round++){
      expect(physics.begin()).toBe(true);
      const len=physics.positions.length;
-     for(let phase=0;phase<=12;phase++){
-       physics.setPullProgress(phase/12);
-       physics.simulate(1/120);
+     const trace: unknown[]=[];
+     for(let phase=0;phase<=20;phase++){
+       physics.setPullProgress(phase/20);
+       for(let j=0;j<3;j++)physics.simulate(1/120);
+       if(phase%3===0)trace.push({p:phase/20,z:+physics.frame.hook.z.toFixed(3),g:physics.frame.grasped,
+         pass:physics.frame.passedThrough,graspIndex:physics.frame.graspIndex,
+         cap:physics.frame.graspDistance});
      }
      expect(physics.positions).toHaveLength(len);
      expect(physics.positions.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.z))).toBe(true);
-     expect(physics.complete()).toBe(true);
+     if(!physics.complete())throw new Error('Round '+round+' hook trace '+JSON.stringify(trace));
      expect(physics.completed).toBe(round+1);
    }
    expect(physics.unravel()).toBe(true);
    expect(physics.completed).toBe(1);
+ });
+ it('the hook cannot drag working yarn before physical capture',()=>{
+    const r=new PhysicalYarn();
+    expect(r.begin()).toBe(true);
+    r.setPullProgress(.12);
+    for(let i=0;i<6;i++)r.simulate(1/120);
+    expect(r.frame.grasped).toBe(false);
+    expect(r.frame.graspDistance).toBeNull();
+    expect(r.complete()).toBe(false);
+    r.setPullProgress(.26);
+    for(let i=0;i<10;i++)r.simulate(1/120);
+    expect(r.frame.grasped).toBe(true);
+    expect(r.frame.graspIndex).not.toBeNull();
+    expect(r.frame.graspDistance).toBeLessThan(.001);
+    const material=r.frame.graspIndex!;
+    const p=r.positions[material];
+    expect(Math.hypot(r.frame.hook.x-p.x,r.frame.hook.y-p.y,r.frame.hook.z-p.z)).toBeLessThan(.001);
+ });
+ it('a caught strand actually pulls adjacent physical filament particles along with the hook',()=>{
+   const r=new PhysicalYarn();
+   expect(r.begin()).toBe(true);
+   r.setPullProgress(.28);
+   for(let i=0;i<10;i++)r.simulate(1/120);
+   const index=r.frame.graspIndex!;
+   const neighbor=r.positions[index+2];
+   const origin={...neighbor};
+   for(const progress of [.36,.48,.61,.73,.84]){
+     r.setPullProgress(progress);
+     for(let i=0;i<12;i++)r.simulate(1/120);
+     expect(r.frame.grasped).toBe(true);
+     expect(r.frame.graspDistance).toBeLessThan(.001);
+   }
+   const displaced=Math.hypot(neighbor.x-origin.x,neighbor.y-origin.y,neighbor.z-origin.z);
+   expect(displaced).toBeGreaterThan(.04);
+ });
+ it('no stitch may be committed until captured yarn genuinely crosses the live aperture',()=>{
+    const r=new PhysicalYarn();
+    expect(r.begin()).toBe(true);
+    r.setPullProgress(1);
+    for(let i=0;i<15;i++)r.simulate(1/120);
+    // Skipping the behind-the-loop phase cannot create a chain.
+    expect(r.frame.passedThrough).toBe(false);
+    expect(r.complete()).toBe(false);
+    expect(r.unravel()).toBe(true);
+    expect(r.completed).toBe(0);
+    expect(r.begin()).toBe(true);
+    for(const p of [.26,.35,.46,.58,.78,1]){
+      r.setPullProgress(p);
+      for(let i=0;i<12;i++)r.simulate(1/120);
+    }
+    expect(r.frame.grasped).toBe(true);
+    expect(r.frame.passedThrough).toBe(true);
+    expect(r.complete()).toBe(true);
+    expect(r.completed).toBe(1);
  });
  it('rejects a new stitch before the previous one completes',()=>{
    const r=new PhysicalYarn();

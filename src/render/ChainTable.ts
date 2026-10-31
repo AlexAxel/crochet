@@ -40,12 +40,16 @@ function line(a:THREE.Vector3,b:THREE.Vector3,r:number,mat:THREE.Material){
 function createHook():THREE.Group{
   const g=new THREE.Group();
   // The working tip is at local origin and follows the captured bight.
+  // The groove/throat is local (0,0,0) and is EXACTLY the solver's
+  // captured material point. The hooked tooth surrounds this position,
+  // instead of floating 0.18 above the strand as in the previous alpha.
   const hook=swept([
-    new THREE.Vector3(-.06,-.06,.01),new THREE.Vector3(-.13,-.13,.02),
-    new THREE.Vector3(-.16,-.01,.00),new THREE.Vector3(-.08,.045,.00),
-    new THREE.Vector3(.10,.035,.01),new THREE.Vector3(.25,.055,.03),
-    new THREE.Vector3(.49,.14,.06),new THREE.Vector3(1.9,.68,.12)
-  ],.048,metal);g.add(hook);
+    new THREE.Vector3(-.19,-.065,.02),new THREE.Vector3(-.24,-.13,.015),
+    new THREE.Vector3(-.25,.015,.01),new THREE.Vector3(-.16,.115,.01),
+    new THREE.Vector3(-.075,.105,.005),new THREE.Vector3(0,0,0),
+    new THREE.Vector3(.14,.07,.014),new THREE.Vector3(.31,.125,.03),
+    new THREE.Vector3(.57,.2,.06),new THREE.Vector3(1.9,.68,.12)
+  ],.046,metal);g.add(hook);
   g.add(swept([
     new THREE.Vector3(.68,.20,.09),new THREE.Vector3(.98,.32,.10),
     new THREE.Vector3(1.4,.49,.11),new THREE.Vector3(1.88,.67,.12)
@@ -247,8 +251,11 @@ export class ChainTable{
     const shadowPts=path.map(p=>new THREE.Vector3(p.x+.06,p.y-.07,-.255));
     this.yarnShadow=swept(shadowPts,.052,this.shadowMaterial);
     this.group.add(this.yarnShadow);
+    // The rendered hook is bound to the physical grasp vertex, not an
+    // independent cosmetic path. Turning its mouth down helps hold the strand.
     this.hook.position.copy(xyz(frame.hook));
-    this.hook.rotation.z=frame.phase==='catch'?.15:frame.phase==='draw'?-.17:0;
+    this.hook.rotation.z=frame.phase==='catch'?.10:frame.phase==='draw'?-.12:0;
+    this.hook.rotation.y=frame.grasped?-.22:0;
     this.guide.position.copy(xyz(frame.active));
     this.guide.position.z=.45;
     this.guide.visible=this.showGuide&&this.moving;
