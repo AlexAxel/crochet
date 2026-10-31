@@ -23,6 +23,9 @@ try{
   await page.waitForSelector('#desk canvas',{timeout:20000});
   fs.mkdirSync('screenshots',{recursive:true});
   await page.screenshot({path:'screenshots/00-initial.png'});
+  const initialThumbnail=await page.screenshot({type:'jpeg',quality:48,
+    clip:{x:405,y:40,width:440,height:620}});
+  console.log('INITIAL_JPEG_BASE64:'+initialThumbnail.toString('base64'));
   await page.locator('#settings-open').click();
   await page.locator('#speed').evaluate(input=>{
     input.value='700';input.dispatchEvent(new Event('input',{bubbles:true}));
