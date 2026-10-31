@@ -31,6 +31,10 @@ try{
   for(let i=0;i<8;i++)await page.keyboard.press('1');
   await page.waitForTimeout(6300);
   await page.screenshot({path:'screenshots/08-chain.png'});
+  const before=fs.readFileSync('screenshots/00-initial.png');
+  const after=fs.readFileSync('screenshots/08-chain.png');
+  const changed=!before.equals(after);
+  if(!changed)throw new Error('Eight chain commands did not change the rendered Pixi canvas');
   const title=await page.title();
   const count=await page.locator('#desk canvas').count();
   const notice=await page.locator('#notice').textContent();
@@ -38,7 +42,7 @@ try{
     const canvas=document.querySelector('#desk canvas');
     return {width:canvas?.width,height:canvas?.height};
   });
-  console.log('BROWSER_SMOKE',JSON.stringify({title,count,notice,pixel,errors}));
+  console.log('BROWSER_SMOKE',JSON.stringify({title,count,notice,pixel,changed,errors}));
   const thumbnail=await page.screenshot({type:'jpeg',quality:48,
     clip:{x:405,y:40,width:440,height:620}});
   console.log('VISUAL_JPEG_BASE64:'+thumbnail.toString('base64'));
