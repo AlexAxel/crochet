@@ -16,6 +16,9 @@
  */
 export type Vector={x:number;y:number;z:number};
 export type Phase='idle'|'approach'|'catch'|'draw'|'tighten';
+export const CAPTURE_AT=.24;
+export const DRAW_START=.36;
+export const DRAW_END=.78;
 export type PhysicsSnapshot={
   positions:Vector[];
   previous:Vector[];
@@ -35,6 +38,11 @@ export type PhysicsFrame={
   moving:boolean;
   contacts:number;
   maxStrain:number;
+  // Contact is true ONLY after the hook has actually attached to the physical strand.
+  grasped:boolean;
+  graspIndex:number|null;
+  graspDistance:number|null;
+  passedThrough:boolean;
 };
 export const SEGMENT=.075;
 export const RADIUS=.052;
@@ -53,14 +61,20 @@ const smooth=(t:number)=>{t=clamp(t);return t*t*(3-2*t);};
  * Each rod particle moves through physics: neighbours follow due to
  * inextensibility, bend, collision and hand-held anchors.
  */
-function hookTrack(phase:number,grasp:Vector,entry:Vector):Vector{
-  if(phase<.16)return mix(grasp,vec(grasp.x-.03,grasp.y+.12,grasp.z+.04),smooth(phase/.16));
-  if(phase<.34)return mix(vec(grasp.x-.03,grasp.y+.12,grasp.z+.04),
-    vec(entry.x+.04,entry.y+.015,-.24),smooth((phase-.16)/.18));
-  if(phase<.68)return mix(vec(entry.x+.04,entry.y+.015,-.24),
-    vec(entry.x+.04,entry.y+.015,.36),smooth((phase-.34)/.34));
-  return mix(vec(entry.x+.04,entry.y+.015,.36),
-    vec(entry.x+.48,entry.y+.16,.24),smooth((phase-.68)/.32));
+function hookTrack(progress:number,grasp:Vector,entry:Vector,rest:Vector):Vector{
+  const p=clamp(progress);
+  // Hook arrives at the working strand WITHOUT moving that strand.
+  if(p<CAPTURE_AT)
+    return mix(rest,grasp,smooth(p/CAPTURE_AT));
+  // AFTER hooking the yarn, move the captured material point to the
+  // back side of the old loop's opening (not through its solid strands).
+  const rear=vec(entry.x+.015,entry.y,-.26);
+  if(p<DRAW_START)return mix(grasp,rear,smooth((p-CAPTURE_AT)/(DRAW_START-CAPTURE_AT)));
+  const front=vec(entry.x+.015,entry.y,.35);
+  if(p<DRAW_END)return mix(rear,front,smooth((p-DRAW_START)/(DRAW_END-DRAW_START)));
+  // Pull the new bight clear, leaving it on the hook and the old
+  // opening behind it. The yarn is still the *same physical material*.
+  return mix(front,vec(entry.x+.40,entry.y+.13,.31),smooth((p-DRAW_END)/(1-DRAW_END)));
 }
 
 /** arclength resampling prevents one physical link from being much longer. */
@@ -108,6 +122,11 @@ type Pull={
   progress:number;
   before:PhysicsSnapshot;
   oldLoop:number;
+  restHook:Vector;
+  support:[{index:number;point:Vector},{index:number;point:Vector}];
+  caught:boolean;
+  visitedBack:boolean;
+  passedThrough:boolean;
 };
 export class PhysicalYarn{
   readonly spacing=SEGMENT;
@@ -138,9 +157,14 @@ export class PhysicalYarn{
   get frame():PhysicsFrame{
     let phase:Phase='idle';
     const p=this.pull?.progress;
-    if(p!==undefined)phase=p<.16?'approach':p<.34?'catch':p<.68?'draw':'tighten';
+    if(p!==undefined)phase=p<CAPTURE_AT?'approach':p<DRAW_START?'catch':p<DRAW_END?'draw':'tighten';
+    const index=this.pull?.caught?this.pull.material:null;
+    const strand=index!==null?this.positions[index]:null;
     return {yarn:this.positions,hook:copy(this.hook),active:copy(this.positions[this.crown]),phase,
-      completed:this.stitches,moving:!!this.pull,contacts:this.contacts,maxStrain:this.lastStrain};
+      completed:this.stitches,moving:!!this.pull,contacts:this.contacts,maxStrain:this.lastStrain,
+      grasped:index!==null,graspIndex:index,
+      graspDistance:strand?stepLen(this.hook,strand):null,
+      passedThrough:this.pull?.passedThrough??false};
   }
   reset(){
     const knot=initialSlipKnot();
@@ -152,7 +176,7 @@ export class PhysicalYarn{
     this.crown=knot.crown;this.outlet=knot.outlet;
     this.lastFreeze=Math.max(1,knot.outlet-7);
     this.stitches=0;this.saved=[];this.pull=null;this.contacts=0;this.lastStrain=0;this.accumulated=0;
-    this.hook=add(this.positions[this.crown],vec(0,0,.2));
+    this.hook=copy(this.positions[this.crown]);
   }
   private snapshot():PhysicsSnapshot{
     return {positions:this.positions.map(copy),previous:this.previous.map(copy),
@@ -163,7 +187,7 @@ export class PhysicalYarn{
     this.positions=s.positions.map(copy);this.previous=s.previous.map(copy);
     this.crown=s.active;this.outlet=s.outlet;this.stitches=s.count;this.lastFreeze=s.contactFreeze;
     this.rest=[...s.rest];this.bends=[...s.bends];this.fixedEnd=this.positions.length-1;
-    this.pull=null;this.hook=add(this.positions[this.crown],vec(0,0,.2));
+    this.pull=null;this.hook=copy(this.positions[this.crown]);
   }
   private aperture():Vector {
     // The *hole* lies between the arms of the LIVE loop, not on its crown.
@@ -205,9 +229,17 @@ export class PhysicalYarn{
     const entry=this.aperture();
     const start=copy(this.positions[material]);
     const before=this.snapshot();
+    const rimLeft=Math.max(0,this.crown-4);
+    const rimRight=Math.min(this.fixedEnd-1,this.crown+4);
+    const support:[{index:number;point:Vector},{index:number;point:Vector}]=[
+      {index:rimLeft,point:copy(this.positions[rimLeft])},
+      {index:rimRight,point:copy(this.positions[rimRight])}
+    ];
+    const restHook=copy(this.positions[this.crown]);
     this.feedFromSkein();
-    this.pull={material,entry,start,progress:0,before,oldLoop:this.crown};
-    this.hook=add(entry,vec(0,0,.18));
+    this.pull={material,entry,start,progress:0,before,oldLoop:this.crown,
+      restHook,support,caught:false,visitedBack:false,passedThrough:false};
+    this.hook=copy(restHook);
     return true;
   }
   setPullProgress(progress:number){
@@ -221,14 +253,16 @@ export class PhysicalYarn{
    */
   complete():boolean{
     const p=this.pull;
-    if(!p || p.progress<.999)return false;
+    // A completed stroke is not automatically a stitch. The SAME captured
+    // material must first travel behind the old loop and then through it.
+    if(!p || p.progress<.999 || !p.caught || !p.passedThrough)return false;
     this.saved.push(p.before);
     this.stitches++;
     this.lastFreeze=Math.max(this.lastFreeze,p.oldLoop-4);
     this.crown=p.material;
     this.outlet=p.material+Math.max(4,Math.round(.32/SEGMENT));
     this.pull=null;
-    this.hook=add(this.positions[this.crown],vec(0,0,.17));
+    this.hook=copy(this.positions[this.crown]);
     return true;
   }
   unravel():boolean{
@@ -260,14 +294,18 @@ export class PhysicalYarn{
   }
   private hookTarget(){
     if(!this.pull)return this.positions[this.crown];
-    return hookTrack(this.pull.progress,this.pull.start,this.pull.entry);
+    return hookTrack(this.pull.progress,this.pull.start,this.pull.entry,this.pull.restHook);
   }
   private tick(dt:number){
     const n=this.positions.length;
     const target=this.hookTarget();
-    const handle=this.pull?.material??this.crown;
+    const grip=!!this.pull && this.pull.progress>=CAPTURE_AT;
+    const handle=grip?this.pull!.material:this.crown;
     const atRest=!this.pull;
-    this.hook=add(target,vec(0,0,.18));
+    if(this.pull && grip)this.pull.caught=true;
+    // Before yarn-over, move the hook only. The strand remains free.
+    // Once attached, the exact same material particle follows the hook.
+    this.hook=copy(target);
     // Apply previous-frame velocities; drag damps motion on a table.
     for(let i=1;i<n-1;i++){
       const p=this.positions[i],last=this.previous[i];
@@ -285,15 +323,29 @@ export class PhysicalYarn{
       this.positions[n-1]=copy(fixedLast);
       // Hook contact/grasp is a genuinely kinematic boundary condition.
       const hold=this.positions[handle];
-      hold.x=target.x;hold.y=target.y;hold.z=target.z;
+      if(grip || atRest){
+        hold.x=target.x;hold.y=target.y;hold.z=target.z;
+      }
       // Existing live loop stays supported while the new bight is pulled
       // through it. This is a temporary tool/hand anchor, not a new stitch.
       if(this.pull){
-        const old=this.positions[this.pull.oldLoop],fixed=this.pull.entry;
-        if(this.pull.oldLoop!==handle){
-          old.x+=.82*(fixed.x-old.x);
-          old.y+=.82*(fixed.y-old.y);
-          old.z+=.82*(fixed.z-old.z);
+        // The old loop must stay OPEN until the bight has cleared it.
+        // Pin two material points on opposing loop arms as temporary
+        // tool/hand constraints. A pinch on the crown alone collapses the hole.
+        const supportWeight=this.pull.progress<DRAW_END?.92:.15;
+        for(const support of this.pull.support){
+          const old=this.positions[support.index];
+          if(support.index!==handle){
+            old.x+=supportWeight*(support.point.x-old.x);
+            old.y+=supportWeight*(support.point.y-old.y);
+            old.z+=supportWeight*(support.point.z-old.z);
+          }
+        }
+        const crown=this.positions[this.pull.oldLoop];
+        if(this.pull.oldLoop!==handle&&this.pull.progress<DRAW_END){
+          crown.x+=.45*(this.pull.restHook.x-crown.x);
+          crown.y+=.45*(this.pull.restHook.y-crown.y);
+          crown.z+=.45*(this.pull.restHook.z-crown.z);
         }
       }
       // XPBD stretch: C=|xi-xj|-L; lambda integrates within substep.
@@ -331,9 +383,16 @@ export class PhysicalYarn{
       if(iteration===3||iteration===8)this.resolveEdgeContacts(handle);
     }
     this.positions[0]=fixedFirst;this.positions[n-1]=fixedLast;
-    if(atRest){
-      const p=this.positions[this.crown];
-      this.hook=add(p,vec(0,0,.18));
+    if(grip){
+      // Rendering uses the actual grasp point, never an offset / decorative
+      // hook trajectory that could visibly lose the yarn.
+      const grabbed=this.positions[handle];
+      this.hook=copy(grabbed);
+      const relativeDepth=grabbed.z-this.pull!.entry.z;
+      if(relativeDepth<-.10)this.pull!.visitedBack=true;
+      if(this.pull!.visitedBack && relativeDepth>.13)this.pull!.passedThrough=true;
+    }else if(atRest){
+      this.hook=copy(this.positions[this.crown]);
     }
     let worst=0;
     for(let i=0;i<this.rest.length;i++){
