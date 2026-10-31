@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { apply, initialModel, replay, validateGraph, makeDemo } from '../src/core/model';
-import { buildThread } from '../src/core/geometry';
+import { buildThread, validateLocalPassages } from '../src/core/geometry';
 
 describe('crochet stitch graph / independent of rendering', () => {
   it('makes one continuous chain with previous-stitch references', () => {
@@ -31,6 +31,7 @@ describe('crochet stitch graph / independent of rendering', () => {
     expect(m.rows[1][0].trace.filter(x=>x==='drawUpLoop')).toHaveLength(2);
     expect(m.cursor).toBe(1);
     expect(validateGraph(m)).toEqual([]);
+    expect(validateLocalPassages(buildThread(m))).toEqual([]);
   });
   it('keeps mistakes (skipped loops) and allows undo through event log', () => {
     const log = ['chain','chain','chain','turn','skip','sc'] as const;
@@ -54,6 +55,8 @@ describe('crochet stitch graph / independent of rendering', () => {
     expect(m.rows).toHaveLength(4);
     const yarn = buildThread(m);
     expect(yarn.segments).toHaveLength(m.rows.flat().length);
+    expect(yarn.passages).toHaveLength(14 + 14 + 8);
+    expect(validateLocalPassages(yarn)).toEqual([]);
     expect(yarn.points.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.z))).toBe(true);
     expect(yarn.segments.every((s,i)=>!i || s.start > yarn.segments[i-1].end)).toBe(true);
   });
