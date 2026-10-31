@@ -30,7 +30,7 @@ function sound(){
   }catch{/* Sound is optional and must not affect crochet. */}
 }
 function sync(count:number,busy:boolean){
-  button('stitch').disabled=busy||count>=table.capacity;
+  button('stitch').disabled=count>=table.capacity;
   button('unravel').disabled=count===0&&!busy;
   button('reset').disabled=count===0&&!busy;
 }
@@ -58,6 +58,20 @@ el('reset-view').addEventListener('click',()=>table.resetView());
 input('speed').addEventListener('input',()=>table.setSpeed(Number(input('speed').value)));
 input('guide').addEventListener('change',()=>table.setGuide(input('guide').checked));
 input('show-hook').addEventListener('change',()=>table.setHookVisible(input('show-hook').checked));
+function setView(mode:'3d'|'2.5d'){
+  table.setMode(mode);
+  document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>{
+    const selected=b.dataset.view===mode;
+    b.classList.toggle('active',selected);
+    b.setAttribute('aria-pressed',String(selected));
+  });
+  text('navigation-hint',mode==='3d'
+    ?'3D: ЛКМ — вращать · Колёсико зажать — перемещать · Прокрутка — масштаб к курсору'
+    :'2,5D: перетаскивай стол · Прокрутка — масштаб к курсору');
+}
+document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>{
+  b.addEventListener('click',()=>setView(b.dataset.view==='2.5d'?'2.5d':'3d'));
+});
 document.querySelectorAll<HTMLButtonElement>('[data-yarn]').forEach(b=>{
   b.addEventListener('click',()=>{
     const value=b.dataset.yarn!;
@@ -77,3 +91,4 @@ window.addEventListener('keydown',e=>{
   else if(e.code==='Space'){e.preventDefault();note('Следующий ряд появится после проверки воздушной петли');}
 });
 sync(table.count,false);
+setView('3d');
