@@ -302,6 +302,14 @@ export class PhysicalYarn{
   }
   private hookTarget(){
     if(!this.pull)return this.heldLoop;
+    // During approach, aim at the LIVE working strand. It can move under
+    // gravity/tension; aiming at the location from begin() would miss it.
+    if(this.pull.progress<CAPTURE_AT)
+      return hookTrack(this.pull.progress,this.positions[this.pull.material],
+        this.pull.entry,this.pull.restHook);
+    // Lock the grasp to the exact current material position at the moment
+    // the hook reaches it. No hidden teleport to an earlier screenshot.
+    if(!this.pull.caught)this.pull.start=copy(this.positions[this.pull.material]);
     return hookTrack(this.pull.progress,this.pull.start,this.pull.entry,this.pull.restHook);
   }
   private tick(dt:number){
