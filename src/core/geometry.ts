@@ -42,6 +42,10 @@ export function stitchCenters(model: Model): Map<string, P3> {
       result.set(stitch.id, P(cx + shift * direction, -.58 + row * .46, 0));
     }
   }
+  for (const turn of model.turningChains) {
+    const parent = result.get(turn.parents[0]);
+    if (parent) result.set(turn.id,P(parent.x,parent.y+.29,.05));
+  }
   return result;
 }
 
@@ -117,7 +121,11 @@ export function buildThread(model: Model): ThreadGeometry {
   const segments: ThreadGeometry['segments'] = [];
   const passages: ThreadGeometry['passages'] = [];
 
-  for (const stitch of model.rows.flat()) {
+  const ordered = model.rows.flatMap((row,i)=>[
+    ...row,
+    ...model.turningChains.filter(chain=>chain.row===i)
+  ]);
+  for (const stitch of ordered) {
     const c = positions.get(stitch.id);
     if (!c) continue;
     const parents = stitch.parents.map(id => positions.get(id)).filter((p): p is P3 => !!p);

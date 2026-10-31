@@ -24,6 +24,7 @@ export type Model = {
   rows: Stitch[][];
   cursor: number;
   skipped: string[];
+  turningChains: Stitch[];
   operations: Command[];
   activeLoopCount: number;
   nextId: number;
@@ -39,7 +40,7 @@ const decTrace: Primitive[] = [
 ];
 
 export function initialModel(): Model {
-  return { rows: [[]], cursor: -1, skipped: [], operations: [], activeLoopCount: 1, nextId: 1, error: null };
+  return { rows: [[]], cursor: -1, skipped: [], turningChains: [], operations: [], activeLoopCount: 1, nextId: 1, error: null };
 }
 
 export function nextTargets(model: Model): Stitch[] {
@@ -52,6 +53,7 @@ export function apply(model: Model, command: Command): Model {
     ...model,
     rows: model.rows.map(row => [...row]),
     skipped: [...model.skipped],
+    turningChains: [...model.turningChains],
     operations: [...model.operations],
     error: null,
   };
@@ -77,8 +79,19 @@ export function apply(model: Model, command: Command): Model {
       if (row > 0 && m.cursor >= 0)
         return { ...model, error: 'Сначала обработай оставшиеся петли или пропусти их.' };
       if (current.length === 0) return { ...model, error: 'Нельзя повернуть пустой ряд.' };
+      if (row > 0) {
+        // Standard SC turning chain: a REAL yarn operation but not a base
+        // stitch that can be worked into on the next row.
+        const last = current[current.length - 1];
+        m.turningChains.push({
+          id: 's' + m.nextId++, kind: 'chain', row,
+          index: current.length, parents: [last.id], trace: [...chainTrace], command: 'turn'
+        });
+      }
       m.rows.push([]);
-      m.cursor = current.length - 1;
+      // In the foundation, the chain nearest the hook is reserved for turning
+      // height. Ordinary SC goes into the SECOND chain from the hook.
+      m.cursor = row === 0 ? current.length - 2 : current.length - 1;
       break;
     case 'sc':
     case 'inc':
@@ -143,6 +156,15 @@ export function validateGraph(model: Model): string[] {
       seen.set(stitch.id, stitch);
     }
   }
+  for (const chain of model.turningChains) {
+    const parent = seen.get(chain.parents[0]);
+    if (!parent || parent.row !== chain.row)
+      errors.push('Turning chain is not attached to preceding row: ' + chain.id);
+    if (chain.kind !== 'chain' || chain.command !== 'turn')
+      errors.push('Invalid turning chain ' + chain.id);
+    if (seen.has(chain.id)) errors.push('Duplicate turning-chain ID '+chain.id);
+    seen.set(chain.id,chain);
+  }
   if (model.activeLoopCount !== 1) errors.push('Single-hook work must have one live hook loop');
   return errors;
 }
@@ -151,9 +173,9 @@ export function makeDemo(): Command[] {
   const actions: Command[] = [];
   for (let i = 0; i < 14; i++) actions.push('chain');
   actions.push('turn');
-  for (let i = 0; i < 14; i++) actions.push('sc');
+  for (let i = 0; i < 13; i++) actions.push('sc');
   actions.push('turn');
-  for (let i = 0; i < 14; i++) actions.push('sc');
+  for (let i = 0; i < 13; i++) actions.push('sc');
   actions.push('turn');
   for (let i = 0; i < 8; i++) actions.push('sc');
   return actions;
