@@ -83,33 +83,33 @@ export function studyDiagram(op:Command, stage:LessonStep, stepIndex:number, tot
   let previous='';
   for(let i=0;i<Math.min(5,existingCount);i++){
     const x=90+i*32;
-    previous+=\`<path d="M \${x} 145 Q \${x+13} 102 \${x+27} 145 Q \${x+14} 168 \${x} 145" fill="none" stroke="\${c}" stroke-width="10" stroke-linecap="round"/>\`;
+    previous+=`<path d="M ${x} 145 Q ${x+13} 102 ${x+27} 145 Q ${x+14} 168 ${x} 145" fill="none" stroke="${c}" stroke-width="10" stroke-linecap="round"/>`;
   }
-  const parent=!isChain?\`
-    <path d="M 140 150 Q 205 96 262 150 Q 205 184 140 150" fill="none" stroke="\${c}" stroke-width="12" stroke-linecap="round"/>
-    <path d="M 138 150 Q 205 91 264 150" fill="none" stroke="\${light}" stroke-width="3" opacity=".9"/>\`:'';
+  const parent=!isChain?`
+    <path d="M 140 150 Q 205 96 262 150 Q 205 184 140 150" fill="none" stroke="${c}" stroke-width="12" stroke-linecap="round"/>
+    <path d="M 138 150 Q 205 91 264 150" fill="none" stroke="${light}" stroke-width="3" opacity=".9"/>`:'';
   const inserted=isInsert?'<path d="M 250 164 L 398 128" stroke="#a6b2b7" stroke-width="15" stroke-linecap="round"/>':'';
-  return \`
-    <svg viewBox="0 0 520 246" role="img" aria-label="Учебная схема движения нити: \${stage.title}" xmlns="http://www.w3.org/2000/svg">
+  return `
+    <svg viewBox="0 0 520 246" role="img" aria-label="Учебная схема движения нити: ${stage.title}" xmlns="http://www.w3.org/2000/svg">
       <defs><marker id="lessonArrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#8f7c6c"/></marker></defs>
       <rect x="0" y="0" width="520" height="246" rx="15" fill="#f5ede2"/>
       <path d="M 12 200 Q 200 214 500 199" fill="none" stroke="#ddcdbb" stroke-width="1" stroke-dasharray="4 7"/>
-      \${previous}
-      \${parent}
-      \${inserted}
-      <path d="M 488 215 C 482 172 458 148 \${showGrab?380:413} 120" fill="none" stroke="\${c}" stroke-width="13" stroke-linecap="round"/>
-      <path d="M 488 215 C 482 172 458 148 \${showGrab?380:413} 120" fill="none" stroke="\${light}" stroke-width="3" opacity=".85"/>
-      \${showGrab?\`<path d="M 377 119 Q 340 74 \${liveX+3} 100" fill="none" stroke="\${accent}" stroke-width="12" stroke-linecap="round"/>\`:''}
-      <ellipse cx="\${liveX}" cy="\${showThrough?99:115}" rx="23" ry="33" fill="none" stroke="\${finish?accent:c}" stroke-width="11"/>
-      \${stage.hooks>=2?\`<ellipse cx="\${liveX-54}" cy="115" rx="20" ry="30" fill="none" stroke="\${c}" stroke-width="10"/>\`:''}
-      \${stage.hooks>=3?\`<ellipse cx="\${liveX-97}" cy="115" rx="19" ry="29" fill="none" stroke="\${c}" stroke-width="10"/>\`:''}
+      ${previous}
+      ${parent}
+      ${inserted}
+      <path d="M 488 215 C 482 172 458 148 ${showGrab?380:413} 120" fill="none" stroke="${c}" stroke-width="13" stroke-linecap="round"/>
+      <path d="M 488 215 C 482 172 458 148 ${showGrab?380:413} 120" fill="none" stroke="${light}" stroke-width="3" opacity=".85"/>
+      ${showGrab?`<path d="M 377 119 Q 340 74 ${liveX+3} 100" fill="none" stroke="${accent}" stroke-width="12" stroke-linecap="round"/>`:''}
+      <ellipse cx="${liveX}" cy="${showThrough?99:115}" rx="23" ry="33" fill="none" stroke="${finish?accent:c}" stroke-width="11"/>
+      ${stage.hooks>=2?`<ellipse cx="${liveX-54}" cy="115" rx="20" ry="30" fill="none" stroke="${c}" stroke-width="10"/>`:''}
+      ${stage.hooks>=3?`<ellipse cx="${liveX-97}" cy="115" rx="19" ry="29" fill="none" stroke="${c}" stroke-width="10"/>`:''}
       <path d="M 260 116 L 479 116" stroke="#708c90" stroke-width="15" stroke-linecap="round"/>
       <path d="M 260 109 L 479 109" stroke="#e0e8e4" stroke-width="3" stroke-linecap="round"/>
       <path d="M 259 116 Q 238 119 247 137 Q 270 144 274 122" stroke="#708c90" stroke-width="12" fill="none" stroke-linecap="round"/>
-      \${showThrough?\`<path d="M 350 76 C 328 78 302 92 286 110" fill="none" stroke="#718d82" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#lessonArrow)"/>\`:''}
-      <circle cx="451" cy="40" r="16" fill="#ead8c5"/><text x="451" y="45" text-anchor="middle" font-size="12" fill="#836f5d" font-weight="700">\${stepIndex+1}</text>
-      <text x="20" y="27" font-size="13" fill="#796a5b" font-weight="700">УЧЕБНЫЙ РАЗБОР · \${stepIndex+1} / \${total}</text>
+      ${showThrough?`<path d="M 350 76 C 328 78 302 92 286 110" fill="none" stroke="#718d82" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#lessonArrow)"/>`:''}
+      <circle cx="451" cy="40" r="16" fill="#ead8c5"/><text x="451" y="45" text-anchor="middle" font-size="12" fill="#836f5d" font-weight="700">${stepIndex+1}</text>
+      <text x="20" y="27" font-size="13" fill="#796a5b" font-weight="700">УЧЕБНЫЙ РАЗБОР · ${stepIndex+1} / ${total}</text>
       <text x="20" y="225" font-size="11" fill="#8f7c6c">Бежевый — петля · Бирюзовый — захваченная нить · Серый — крючок</text>
     </svg>
-  \`;
+  `;
 }
