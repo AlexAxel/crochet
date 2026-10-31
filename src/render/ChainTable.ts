@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {PhysicalYarn, type Vector, type PhysicsFrame} from '../core/yarnPhysics';
-import {inspectionPoint} from './inspectionPoint';
+import {StableCrochet, type V3, type CrochetFrame} from '../core/stableChain';
+import {FlatTable} from './FlatTable';
 
 export const COLORWAYS:Record<string,string>={
   blue:'#73a9d3',cream:'#e8d2ac',rose:'#cf8e9c',sage:'#8eaa92',lavender:'#9f90bf'
 };
-const xyz=(p:Vector)=>new THREE.Vector3(p.x,p.y,p.z);
+const xyz=(p:V3)=>new THREE.Vector3(p.x,p.y,p.z);
 const metal=new THREE.MeshStandardMaterial({color:'#d5dce0',metalness:.83,roughness:.23});
 const woodHandle=new THREE.MeshStandardMaterial({color:'#bb8566',metalness:0,roughness:.57});
 const paper=new THREE.MeshStandardMaterial({color:'#e7d8c0',roughness:1});
@@ -121,7 +121,11 @@ function makeAccessoryGroup(){
 }
 
 export class ChainTable{
-  readonly physics=new PhysicalYarn();
+  readonly machine=new StableCrochet();
+  private flat:FlatTable;
+  private mode:'3d'|'2.5d'='3d';
+  private colorName='blue';
+  private queued=0;
   private renderer:THREE.WebGLRenderer;
   private scene=new THREE.Scene();
   private camera=new THREE.OrthographicCamera(-8,8,5,-5,.1,120);
@@ -141,7 +145,7 @@ export class ChainTable{
   private resizeObserver:ResizeObserver;
   private frameId=0;
   private startTime=0;
-  private lengthMs=4200;
+  private lengthMs=1900;
   private lastUpdate=0;
   private moving=false;
   private settleUntil=0;
@@ -226,27 +230,43 @@ export class ChainTable{
     this.guide=new THREE.Mesh(new THREE.TorusGeometry(.25,.018,6,48),gmat);
     this.guide.visible=false;this.scene.add(this.guide);
     this.scene.add(this.group);
+    this.flat=new FlatTable(container);
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(container);
-    this.resize();this.updateRope(this.physics.frame);this.loop();
+    this.resize();this.updateRope(this.machine.frame);this.loop();
   }
   setSpeed(ms:number){this.lengthMs=Math.max(900,Math.min(6000,ms));}
   setColor(name:string){
     if(!COLORWAYS[name])return;
+    this.colorName=name;
     this.yarnMat.color.set(COLORWAYS[name]);
+    this.flat.setColor(name);
     this.scene.remove(this.ball);
     this.ball=makeSkein(COLORWAYS[name],this.fibers);
     this.ball.position.set(5.10,-2.10,.05);this.ball.rotation.z=-.33;
     this.scene.add(this.ball);
   }
-  setGuide(v:boolean){this.showGuide=v;this.guide.visible=v&&this.moving;}
+  setGuide(v:boolean){
+    this.showGuide=v;
+    this.guide.visible=v&&this.moving;
+    this.flat.setGuide(v);
+  }
+  setMode(mode:'3d'|'2.5d'){
+    this.mode=mode;
+    this.renderer.domElement.style.display=mode==='3d'?'block':'none';
+    this.controls.enabled=mode==='3d';
+    this.flat.show(mode==='2.5d');
+    this.flat.render(this.machine.frame);
+  }
+  get displayMode(){return this.mode;}
   setHookVisible(visible:boolean){
     this.hookVisible=visible;
-    this.updateInspectionMarker(this.physics.frame);
+    this.flat.setHookVisible(visible);
+    this.updateInspectionMarker(this.machine.frame);
   }
-  private updateInspectionMarker(frame:PhysicsFrame){
+  private updateInspectionMarker(frame:CrochetFrame){
     this.hook.visible=this.hookVisible;
-    const point=inspectionPoint(frame,this.hookVisible);
+    const point=this.hookVisible?null:(frame.grasp??(frame.phase==='idle'?frame.hook:null));
     this.graspMarker.visible=point!==null;
     if(point)this.graspMarker.position.copy(xyz(point));
   }
@@ -255,23 +275,30 @@ export class ChainTable{
     this.camera.position.set(0,-3.65,17.5);
     this.controls.target.set(0,-.15,0);
     this.camera.updateProjectionMatrix();this.controls.update();
+    this.flat.resetView();
   }
   start(){
-    if(!this.physics.begin())return false;
+    // Rapid key presses queue deterministic stitches instead of being lost.
+    if(this.moving){
+      if(this.machine.count+this.queued+1>=this.machine.capacity)return false;
+      this.queued++;return true;
+    }
+    if(!this.machine.begin())return false;
     this.startTime=performance.now();this.moving=true;this.settleUntil=0;
-    this.onChange?.(this.physics.completed,true);
+    this.onChange?.(this.machine.count,true);
     return true;
   }
   unravel(){
-    if(this.moving){this.moving=false;}
-    this.settleUntil=performance.now()+800;
-    const ok=this.physics.unravel();
-    this.updateRope(this.physics.frame);
-    this.onChange?.(this.physics.completed,false);
+    this.queued=0;
+    if(this.moving)this.moving=false;
+    const ok=this.machine.unravel();
+    this.updateRope(this.machine.frame);
+    this.onChange?.(this.machine.count,false);
     return ok;
   }
   reset(){
-    this.moving=false;this.settleUntil=0;this.physics.reset();this.updateRope(this.physics.frame);
+    this.moving=false;this.queued=0;this.settleUntil=0;
+    this.machine.reset();this.updateRope(this.machine.frame);
     this.onChange?.(0,false);this.resetView();
   }
   private resize(){
@@ -284,14 +311,14 @@ export class ChainTable{
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w,h,false);
   }
-  private updateRope(frame:PhysicsFrame){
+  private updateRope(frame:CrochetFrame){
     if(this.yarn){
       this.group.remove(this.yarn);this.yarn.geometry.dispose();
     }
     if(this.yarnShadow){
       this.group.remove(this.yarnShadow);this.yarnShadow.geometry.dispose();
     }
-    const path=frame.yarn.map(xyz);
+    const path=frame.points.map(xyz);
     const curve=new THREE.CatmullRomCurve3(path,false,'centripetal',.38);
     const samples=Math.max(144,path.length*4);
     const geo=new THREE.TubeGeometry(curve,samples,.052,10,false);
@@ -306,40 +333,46 @@ export class ChainTable{
     // The rendered hook is bound to the physical grasp vertex, not an
     // independent cosmetic path. Turning its mouth down helps hold the strand.
     this.hook.position.copy(xyz(frame.hook));
-    this.hook.rotation.z=frame.phase==='catch'?.10:frame.phase==='draw'?-.12:0;
-    this.hook.rotation.y=frame.grasped?-.22:0;
+    this.hook.rotation.z=frame.phase==='yarn-over'?.10:frame.phase==='pull-through'?-.12:0;
+    this.hook.rotation.y=frame.grasp?-.22:0;
     this.updateInspectionMarker(frame);
-    this.guide.position.copy(xyz(frame.active));
+    this.guide.position.copy(xyz(frame.live[4]));
     this.guide.position.z=.45;
     this.guide.visible=this.showGuide&&this.moving;
+    this.flat.render(frame);
   }
   private loop=()=>{
     this.frameId=requestAnimationFrame(this.loop);
     const now=performance.now();
-    if(now-this.lastUpdate>29 && (this.moving || now<this.settleUntil)){
-      const elapsed=Math.min(.033,Math.max(.002,(now-this.lastUpdate)/1000));
+    if(this.moving && now-this.lastUpdate>=17){
       this.lastUpdate=now;
       const t=Math.min(1,(now-this.startTime)/this.lengthMs);
-      const eased=t*t*(3-2*t);
-      if(this.moving)this.physics.setPullProgress(eased);
-      this.physics.simulate(elapsed);
-      this.updateRope(this.physics.frame);
-      if(this.moving&&t>=1){
-        this.physics.complete();this.moving=false;this.settleUntil=now+1400;
-        this.updateRope(this.physics.frame);
-        this.onChange?.(this.physics.completed,false);this.onComplete?.();
+      this.machine.setProgress(t*t*(3-2*t));
+      this.updateRope(this.machine.frame);
+      if(t>=1){
+        this.machine.finish();
+        this.moving=false;
+        this.updateRope(this.machine.frame);
+        this.onComplete?.();
+        if(this.queued>0){
+          this.queued--;
+          this.start();
+        }else this.onChange?.(this.machine.count,false);
       }
     }
-    this.controls.update();
-    this.renderer.render(this.scene,this.camera);
+    if(this.mode==='3d'){
+      this.controls.update();
+      this.renderer.render(this.scene,this.camera);
+    }
   };
   dispose(){
     cancelAnimationFrame(this.frameId);this.resizeObserver.disconnect();
     this.controls.dispose();this.renderer.dispose();this.fibers.dispose();
     this.graspMarker.material.map?.dispose();this.graspMarker.material.dispose();
     this.graspMarker.geometry.dispose();
+    this.flat.dispose();
   }
-  get count(){return this.physics.completed;}
+  get count(){return this.machine.count;}
   get busy(){return this.moving;}
-  get capacity(){return this.physics.maxCompleted;}
+  get capacity(){return this.machine.capacity;}
 }
