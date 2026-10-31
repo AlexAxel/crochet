@@ -20,6 +20,7 @@ export type PhysicsSnapshot={
   positions:Vector[];
   previous:Vector[];
   active:number;
+  outlet:number;
   count:number;
   contactFreeze:number;
 };
@@ -153,11 +154,11 @@ export class PhysicalYarn{
   }
   private snapshot():PhysicsSnapshot{
     return {positions:this.positions.map(copy),previous:this.previous.map(copy),
-      active:this.crown,count:this.stitches,contactFreeze:this.lastFreeze};
+      active:this.crown,outlet:this.outlet,count:this.stitches,contactFreeze:this.lastFreeze};
   }
   private restore(s:PhysicsSnapshot){
     this.positions=s.positions.map(copy);this.previous=s.previous.map(copy);
-    this.crown=s.active;this.stitches=s.count;this.lastFreeze=s.contactFreeze;
+    this.crown=s.active;this.outlet=s.outlet;this.stitches=s.count;this.lastFreeze=s.contactFreeze;
     this.pull=null;this.hook=add(this.positions[this.crown],vec(0,0,.2));
   }
   begin():boolean{
@@ -219,7 +220,7 @@ export class PhysicalYarn{
     if(i===this.fixedStart||i===this.fixedEnd)return 0;
     // Work already laid on the table moves under moderate friction,
     // but cannot be completely teleport-fixed. The active area is light.
-    return i<=this.lastFreeze?.18:1;
+    return i <= this.lastFreeze ? .18 : 1;
   }
   private hookTarget(){
     if(!this.pull)return this.positions[this.crown];
@@ -236,7 +237,7 @@ export class PhysicalYarn{
       const p=this.positions[i],last=this.previous[i];
       const vx=(p.x-last.x)*.86,vy=(p.y-last.y)*.86,vz=(p.z-last.z)*.88;
       this.previous[i]=copy(p);
-      const friction=i<=this.lastFreeze?.72:1;
+      const friction=i <= this.lastFreeze ? .72 : 1;
       p.x+=vx*friction;p.y+=vy*friction;
       p.z+=vz-.65*dt*dt;
     }
@@ -249,6 +250,16 @@ export class PhysicalYarn{
       // Hook contact/grasp is a genuinely kinematic boundary condition.
       const hold=this.positions[handle];
       hold.x=target.x;hold.y=target.y;hold.z=target.z;
+      // Existing live loop stays supported while the new bight is pulled
+      // through it. This is a temporary tool/hand anchor, not a new stitch.
+      if(this.pull){
+        const old=this.positions[this.pull.oldLoop],fixed=this.pull.entry;
+        if(this.pull.oldLoop!==handle){
+          old.x+=.82*(fixed.x-old.x);
+          old.y+=.82*(fixed.y-old.y);
+          old.z+=.82*(fixed.z-old.z);
+        }
+      }
       // XPBD stretch: C=|xi-xj|-L; lambda integrates within substep.
       for(let i=0;i<this.rest.length;i++){
         const a=this.positions[i],b=this.positions[i+1];
