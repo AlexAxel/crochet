@@ -193,11 +193,11 @@ export class PixiTable{
     // A single working loop held around the hook shaft; two visible
     // arms, curved crown. No extra closed rings at rest.
     const tighten=frame.drawing?ease((p-.70)/.30):0;
-    const oldBottom=18+shift*.12;
+    const oldBottom=-2+shift*.04;
     const constrict=1-.66*tighten;
     cord(this.rear,path(-14*constrict,oldBottom,
-      -21*constrict,-4,-22*constrict,-42,-6,-47),col,11.9);
-    cord(this.faces,path(-6,-47,14,-52,22*constrict,-24,
+      -20*constrict,-19,-21*constrict,-38,-6,-40),col,11.9);
+    cord(this.faces,path(-6,-40,14,-43,20*constrict,-25,
       14*constrict,oldBottom),col,11.9);
     if(frame.drawing&&p>=.18){
       const forming=ease((p-.34)/.55);
@@ -244,12 +244,12 @@ export class PixiTable{
     // Previously committed yarn geometry is invariant in shape and order.
     const offset=move*24;
     for(let i=0;i<f.completed;i++){
-      const y=35+(f.completed-1-i)*24+offset;
+      const y=15+(f.completed-1-i)*24+offset;
       this.drawChainLink(y,i);
     }
     const showing=f.drawing?ease((p-.74)/.26):0;
-    if(showing>0)this.drawChainLink(35,f.completed,Math.max(.12,showing));
-    this.drawSlipKnot(35+f.completed*24+offset);
+    if(showing>0)this.drawChainLink(15,f.completed,Math.max(.12,showing));
+    this.drawSlipKnot(15+f.completed*24+offset);
     this.drawWorkingYarn();
     this.drawLive(f,offset);
     this.drawHook(f.drawing?p:0);
