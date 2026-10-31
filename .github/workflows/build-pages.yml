@@ -1,0 +1,42 @@
+name: Build GitHub Pages into docs
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pages-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build site for project Pages path
+        run: npm run build:pages
+      - name: Disable Jekyll
+        run: touch docs/.nojekyll
+      - name: Commit compiled site into main/docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs
+          if git diff --cached --quiet; then
+            echo "docs unchanged"
+          else
+            git commit -m "deploy: compile crochet app into docs for GitHub Pages"
+            git push origin HEAD:main
+          fi
