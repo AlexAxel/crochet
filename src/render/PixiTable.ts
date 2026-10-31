@@ -28,11 +28,25 @@ function trace(g:Graphics,c:Curve,dx=0,dy=0){
   g.bezierCurveTo(c[2]+dx,c[3]+dy,c[4]+dx,c[5]+dy,c[6]+dx,c[7]+dy);
 }
 function cord(g:Graphics,c:Curve,color:typeof COLORS[YarnColor],width=14){
-  trace(g,c,2.5,4);g.stroke({color:0x41352d,width:width+4,alpha:.23,cap:'round',join:'round'});
-  trace(g,c);g.stroke({color:color.deep,width:width+2,cap:'round',join:'round'});
+  // Matte cotton shading, without the bright plastic-looking pipe outline.
+  trace(g,c,2,3);g.stroke({color:0x41352d,width:width+3,alpha:.17,cap:'round',join:'round'});
+  trace(g,c);g.stroke({color:color.deep,width:width+1.5,alpha:.78,cap:'round',join:'round'});
   trace(g,c);g.stroke({color:color.shade,width,cap:'round',join:'round'});
-  trace(g,c,-1,-1);g.stroke({color:color.base,width:width*.68,alpha:.95,cap:'round',join:'round'});
-  trace(g,c,-2,-2.5);g.stroke({color:color.light,width:width*.17,alpha:.83,cap:'round',join:'round'});
+  trace(g,c,-.65,-.85);g.stroke({color:color.base,width:width*.68,alpha:.92,cap:'round',join:'round'});
+  trace(g,c,-1.5,-1.7);g.stroke({color:color.light,width:width*.12,alpha:.52,cap:'round',join:'round'});
+  // Tiny oblique twist/fiber marks give the yarn a softer woven texture.
+  for(let k=1;k<=5;k++){
+    const t=k/6,u=1-t;
+    const x=u*u*u*c[0]+3*u*u*t*c[2]+3*u*t*t*c[4]+t*t*t*c[6];
+    const y=u*u*u*c[1]+3*u*u*t*c[3]+3*u*t*t*c[5]+t*t*t*c[7];
+    const dx=3*u*u*(c[2]-c[0])+6*u*t*(c[4]-c[2])+3*t*t*(c[6]-c[4]);
+    const dy=3*u*u*(c[3]-c[1])+6*u*t*(c[5]-c[3])+3*t*t*(c[7]-c[5]);
+    const l=Math.hypot(dx,dy)||1,nx=-dy/l,ny=dx/l;
+    const h=width*.30;
+    g.moveTo(x-nx*h-dx/l*1.5,y-ny*h-dy/l*1.5);
+    g.lineTo(x+nx*h+dx/l*1.5,y+ny*h+dy/l*1.5);
+    g.stroke({color:color.light,width:1.1,alpha:.34,cap:'round'});
+  }
 }
 function st(g:Graphics,c:Curve,width:number,color:number,alpha=1){
   trace(g,c);g.stroke({color,width,alpha,cap:'round',join:'round'});
@@ -148,15 +162,15 @@ export class PixiTable{
   }
   private drawChainLink(y:number,index:number,blend=1){
     const col=COLORS[this.color];
-    const x=Math.sin(index*1.8)*1.7;
-    const w=17*blend,h=13*blend;
-    // The rear bump is under both FRONT legs, as visible on the back of
-    // an actual foundation chain. It is NOT a third disconnected V.
-    cord(this.rear,path(x-12,y-14,x-4,y-26,x+8,y-26,x+14,y-13),col,10.2);
-    // Overlapping front braid. Slight left/right asymmetry prevents a
-    // synthetic row of perfectly duplicated triangles or teardrops.
-    cord(this.faces,path(x-w,y-13,x-w+1,y-1,x-10*blend,y+6,x,y+h),col,13.3);
-    cord(this.faces,path(x+w,y-13,x+w-2,y-3,x+9*blend,y+10,x+1,y+h),col,13.3);
+    const x=Math.sin(index*1.9)*1.35;
+    const w=14.2*blend,h=7.1*blend;
+    // Close-packed braided anatomy: raised rear bar tucked UNDER the
+    // next face V. Avoid empty open droplet/ring silhouettes.
+    cord(this.rear,path(x-11.5,y-12,x-3,y-22,x+7,y-20,x+12,y-9),col,11.3);
+    // Slightly asymmetric, interlocking front legs. Wide stitches and big
+    // triangular holes made the previous attempt look like a necklace.
+    cord(this.faces,path(x-w,y-12,x-w-1,y-1,x-7*blend,y+4,x+.6,y+h),col,13.9);
+    cord(this.faces,path(x+w,y-12,x+w-1,y-3,x+6*blend,y+8,x+.7,y+h),col,13.9);
     // Tiny silk-like twist lines at the crossing, not exaggerated rings.
     if(blend>.87){
       const dy=y+2;
@@ -167,11 +181,11 @@ export class PixiTable{
   private drawSlipKnot(y:number){
     const col=COLORS[this.color];
     // A small tightened knot and tail, separate from numbered CH stitches.
-    cord(this.rear,path(-11,y-2,-22,y+1,-22,y+16,-6,y+20),col,11);
-    cord(this.rear,path(-6,y+20,8,y+24,-2,y+37,-9,y+42),col,11);
-    cord(this.faces,path(-16,y-8,-6,y-18,16,y-8,14,y+6),col,12);
-    cord(this.faces,path(14,y+6,9,y+19,-8,y+14,-9,y+24),col,12);
-    cord(this.rear,path(-9,y+24,-29,y+44,-63,y+77,-111,y+101),col,10.6);
+    // The starting slip knot is TIGHT and small. It is not an eighth
+    // decorated chain ring and should never resemble a figure-eight.
+    cord(this.rear,path(-10,y-5,-18,y+5,-12,y+18,0,y+17),col,10.3);
+    cord(this.faces,path(-10,y-7,2,y-15,14,y-1,4,y+9),col,11.5);
+    cord(this.rear,path(4,y+9,-10,y+23,-42,y+53,-106,y+76),col,10.2);
   }
   private drawLive(frame:ChainFrame,shift:number){
     const col=COLORS[this.color];
@@ -179,12 +193,12 @@ export class PixiTable{
     // A single working loop held around the hook shaft; two visible
     // arms, curved crown. No extra closed rings at rest.
     const tighten=frame.drawing?ease((p-.70)/.30):0;
-    const oldBottom=26+shift*.22;
-    const constrict=1-.64*tighten;
-    cord(this.rear,path(-15*constrict,oldBottom,
-      -27*constrict,2,-29*constrict,-54,-8,-58),col,12.4);
-    cord(this.faces,path(-8,-58,16,-65,29*constrict,-30,
-      16*constrict,oldBottom),col,12.4);
+    const oldBottom=18+shift*.12;
+    const constrict=1-.66*tighten;
+    cord(this.rear,path(-14*constrict,oldBottom,
+      -21*constrict,-4,-22*constrict,-42,-6,-47),col,11.9);
+    cord(this.faces,path(-6,-47,14,-52,22*constrict,-24,
+      14*constrict,oldBottom),col,11.9);
     if(frame.drawing&&p>=.18){
       const forming=ease((p-.34)/.55);
       const pulled=ease((p-.39)/.38);
@@ -210,15 +224,15 @@ export class PixiTable{
   private drawHook(p=0){
     const g=this.tool;
     if(!this.hookVisible)return;
-    const offset=p<.18?14*(1-ease(p/.18)):-10*ease((p-.35)/.5);
+    const offset=p<.18?11*(1-ease(p/.18)):-7*ease((p-.35)/.5);
     // Wrought aluminum throat + warm ergonomic wooden handle.
-    st(g,path(-17+offset,-60,-38+offset,-63,-41+offset,-42,-22+offset,-42),15,0x707a7b);
-    st(g,path(-17+offset,-61,-38+offset,-64,-41+offset,-43,-22+offset,-43),11,0xdee6e8);
-    st(g,path(-22+offset,-43,6+offset,-50,72+offset,-39,135+offset,-31),14,0x858f91);
-    st(g,path(-22+offset,-45,8+offset,-52,74+offset,-41,136+offset,-33),8,0xf3f6f0);
-    st(g,path(66+offset,-41,104+offset,-36,177+offset,-16,218+offset,-9),24,0xa97758);
-    st(g,path(66+offset,-46,104+offset,-41,177+offset,-21,218+offset,-14),6,0xd7ac87,.63);
-    g.circle(218+offset,-9,11).fill(0xb68161);
+    st(g,path(-17+offset,-49,-34+offset,-51,-36+offset,-33,-21+offset,-33),11,0x707a7b);
+    st(g,path(-17+offset,-50,-34+offset,-52,-36+offset,-34,-21+offset,-34),7.4,0xdee6e8);
+    st(g,path(-21+offset,-34,6+offset,-40,72+offset,-31,135+offset,-23),10.6,0x858f91);
+    st(g,path(-21+offset,-36,8+offset,-42,74+offset,-33,136+offset,-25),5.5,0xf3f6f0);
+    st(g,path(66+offset,-33,104+offset,-28,177+offset,-8,218+offset,-1),17,0xa97758);
+    st(g,path(66+offset,-36,104+offset,-31,177+offset,-11,218+offset,-4),3,0xd7ac87,.52);
+    g.circle(218+offset,-1,8.3).fill(0xb68161);
   }
   private redraw(){
     if(!this.model)return;
@@ -228,14 +242,14 @@ export class PixiTable{
     const move=f.drawing?ease((p-.65)/.35):0;
     // The *layout* reflows as a chain hangs down from the active hook.
     // Previously committed yarn geometry is invariant in shape and order.
-    const offset=move*32;
+    const offset=move*24;
     for(let i=0;i<f.completed;i++){
-      const y=43+(f.completed-1-i)*32+offset;
+      const y=35+(f.completed-1-i)*24+offset;
       this.drawChainLink(y,i);
     }
     const showing=f.drawing?ease((p-.74)/.26):0;
-    if(showing>0)this.drawChainLink(43,f.completed,Math.max(.12,showing));
-    this.drawSlipKnot(43+f.completed*32+offset);
+    if(showing>0)this.drawChainLink(35,f.completed,Math.max(.12,showing));
+    this.drawSlipKnot(35+f.completed*24+offset);
     this.drawWorkingYarn();
     this.drawLive(f,offset);
     this.drawHook(f.drawing?p:0);
