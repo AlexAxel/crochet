@@ -137,6 +137,7 @@ export class ChainTable{
   private lengthMs=4100;
   private lastUpdate=0;
   private moving=false;
+  private settleUntil=0;
   private showGuide=false;
   private guide:THREE.Mesh;
   onChange?:(count:number,busy:boolean)=>void;
@@ -201,19 +202,20 @@ export class ChainTable{
   }
   start(){
     if(!this.physics.begin())return false;
-    this.startTime=performance.now();this.moving=true;
+    this.startTime=performance.now();this.moving=true;this.settleUntil=0;
     this.onChange?.(this.physics.completed,true);
     return true;
   }
   unravel(){
     if(this.moving){this.moving=false;}
+    this.settleUntil=performance.now()+800;
     const ok=this.physics.unravel();
     this.updateRope(this.physics.frame);
     this.onChange?.(this.physics.completed,false);
     return ok;
   }
   reset(){
-    this.moving=false;this.physics.reset();this.updateRope(this.physics.frame);
+    this.moving=false;this.settleUntil=0;this.physics.reset();this.updateRope(this.physics.frame);
     this.onChange?.(0,false);this.resetView();
   }
   private resize(){
@@ -254,15 +256,16 @@ export class ChainTable{
   private loop=()=>{
     this.frameId=requestAnimationFrame(this.loop);
     const now=performance.now();
-    if(now-this.lastUpdate>29){
+    if(now-this.lastUpdate>29 && (this.moving || now<this.settleUntil)){
+      const elapsed=Math.min(.033,Math.max(.002,(now-this.lastUpdate)/1000));
       this.lastUpdate=now;
       const t=Math.min(1,(now-this.startTime)/this.lengthMs);
       const eased=t*t*(3-2*t);
       if(this.moving)this.physics.setPullProgress(eased);
-      this.physics.simulate(Math.min(.033,(now-this.lastUpdate)/1000));
+      this.physics.simulate(elapsed);
       this.updateRope(this.physics.frame);
       if(this.moving&&t>=1){
-        this.physics.complete();this.moving=false;
+        this.physics.complete();this.moving=false;this.settleUntil=now+1400;
         this.updateRope(this.physics.frame);
         this.onChange?.(this.physics.completed,false);this.onComplete?.();
       }
