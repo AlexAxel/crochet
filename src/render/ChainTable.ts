@@ -134,8 +134,7 @@ export class ChainTable{
   private hookVisible=true;
   private graspMarker:THREE.Sprite;
   private group=new THREE.Group();
-  private yarn?:THREE.Mesh;
-  private yarnShadow?:THREE.Mesh;
+  private yarnMeshes:THREE.Mesh[]=[];
   private ball:THREE.Group;
   private fibers=fiberTexture();
   private yarnMat=new THREE.MeshStandardMaterial({
@@ -312,24 +311,28 @@ export class ChainTable{
     this.renderer.setSize(w,h,false);
   }
   private updateRope(frame:CrochetFrame){
-    if(this.yarn){
-      this.group.remove(this.yarn);this.yarn.geometry.dispose();
+    // Every yarn sub-path represents a physically meaningful FRONT V,
+    // REAR connector, active loop, working yarn or free tail.
+    // Do NOT concatenate paths into a single Catmull curve: it creates
+    // impossible jumps and mysterious knots between unrelated vertices.
+    for(const mesh of this.yarnMeshes){
+      this.group.remove(mesh);
+      mesh.geometry.dispose();
     }
-    if(this.yarnShadow){
-      this.group.remove(this.yarnShadow);this.yarnShadow.geometry.dispose();
-    }
-    const path=frame.points.map(xyz);
-    const curve=new THREE.CatmullRomCurve3(path,false,'centripetal',.38);
-    const samples=Math.max(144,path.length*4);
-    const geo=new THREE.TubeGeometry(curve,samples,.052,10,false);
-    const length=curve.getLength();
-    this.fibers.repeat.set(Math.max(8,Math.round(length*6)),1);
+    this.yarnMeshes=[];
+    this.fibers.repeat.set(12,1);
     this.fibers.needsUpdate=true;
-    this.yarn=new THREE.Mesh(geo,this.yarnMat);
-    this.yarn.castShadow=true;this.group.add(this.yarn);
-    const shadowPts=path.map(p=>new THREE.Vector3(p.x+.06,p.y-.07,-.255));
-    this.yarnShadow=swept(shadowPts,.052,this.shadowMaterial);
-    this.group.add(this.yarnShadow);
+    for(const segment of frame.segments){
+      if(segment.points.length<2)continue;
+      const path=segment.points.map(xyz);
+      const curve=new THREE.CatmullRomCurve3(path,false,'centripetal',.38);
+      const geometry=new THREE.TubeGeometry(curve,
+        Math.max(28,path.length*8),.052,10,false);
+      const yarn=new THREE.Mesh(geometry,this.yarnMat);
+      yarn.castShadow=true;
+      this.group.add(yarn);
+      this.yarnMeshes.push(yarn);
+    }
     // The rendered hook is bound to the physical grasp vertex, not an
     // independent cosmetic path. Turning its mouth down helps hold the strand.
     this.hook.position.copy(xyz(frame.hook));
