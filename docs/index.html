@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ede2d1"><title>Тихая мастерская · Crochet Lab</title>  <script type="module" crossorigin src="/crochet/assets/index-DYVbnDu8.js"></script>
-  <link rel="stylesheet" crossorigin href="/crochet/assets/index-y3lZTaOf.css">
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ede2d1"><title>Тихая мастерская · Crochet Lab</title>  <script type="module" crossorigin src="/crochet/assets/index-D-4rG5ly.js"></script>
+  <link rel="stylesheet" crossorigin href="/crochet/assets/index-CP8Iqrs3.css">
 </head>
 <body>
 <div id="app">
  <aside class="sidebar">
-  <div class="brand"><div class="monogram">✳</div><div><small>ТИХАЯ МАСТЕРСКАЯ</small><h2>Crochet <em>Lab</em></h2></div><span class="version">α 0.1</span></div>
-  <p class="description">Нить становится петлёй. Петля — полотном. Каждое нажатие меняет настоящую структуру вязания.</p>
+  <div class="brand"><div class="monogram">✳</div><div><small>ТИХАЯ МАСТЕРСКАЯ</small><h2>Crochet <em>Lab</em></h2></div><span class="version">α 0.2</span></div>
+  <p class="description">Техническая мастерская. Полотно создаётся командами, а каждую технику можно разложить на действия крючка.</p>
   <div class="section-title">ВАША РАБОТА</div>
   <div class="project"><div class="project-icon">▥</div><div><strong>Образец столбиков</strong><small>Крючок · одно полотно</small></div><span class="status"></span></div>
   <div class="section-title">ВЯЗАЛЬНЫЕ ОПЕРАЦИИ</div>
@@ -31,15 +31,31 @@
   <div class="bottom-buttons"><button id="demo">↻ Загрузить образец</button><button id="clear">Начать с нуля</button></div>
  </aside>
  <main class="work">
-  <header class="heading"><div><small>МАСТЕРСКАЯ / СИМУЛЯТОР / АЛЬФА</small><h1>Магия обычной нити</h1><p>Свяжи собственное полотно по одной операции за раз</p></div><div class="tools"><button id="reset-view">⌖ Вид сверху</button><label><input type="checkbox" id="debug"> Показать граф</label></div></header>
-  <section class="tabletop"><div class="corner-tag"><span class="point"></span> ПРОЦЕДУРНАЯ ГЕОМЕТРИЯ НИТИ</div><div id="scene"></div><div class="tabletip">Перетащи — вращать · Колесо мыши — масштаб</div><div class="watermark">HANDMADE IN CODE ✳</div></section>
+  <header class="heading"><div><small>THE CROCHET WORKSHOP · ТЕХНИЧЕСКАЯ АЛЬФА 0.2</small><h1>Вязальная мастерская</h1><p>Всё пространство — рабочий стол. Петли рождаются из команд.</p></div><div class="tools"><button id="focus">⌕ Последняя петля</button><button id="reset-view">⌖ Общий вид</button><label><input type="checkbox" id="debug"> Граф петель</label></div></header>
+  <section class="tabletop"><div class="corner-tag"><span class="point"></span> РАБОЧАЯ ДОСКА · ГЕОМЕТРИЯ ПРИБЛИЖЁННАЯ</div><div id="scene"></div><div class="tabletip">Перетащи — вращать · Колесо мыши — масштаб</div><div class="watermark">CROCHET EXPERIMENT ✳</div></section>
   <section class="stats">
    <div><span>РЯД</span><strong id="stat-row">0</strong></div>
    <div><span>СОЗДАНО ПЕТЕЛЬ</span><strong id="stat-loops">0</strong></div>
    <div><span>ОСТАЛОСЬ ОСНОВАНИЙ</span><strong id="stat-left">0</strong></div>
    <div><span>ПРОПУСКИ</span><strong id="stat-skip">0</strong></div>
   </section>
-  <section class="inspector"><div class="inspector-top"><div><strong>◎ Проверка структуры</strong><small>Реальные связи петель и история команд</small></div><span id="valid">Граф корректен</span></div><p id="details">Загрузка…</p><div class="inspector-bottom"><span id="hint">—</span><button id="copy">Скопировать JSON ↗</button></div></section>
+  <section class="learning-panel">
+   <div class="learning-kicker"><span class="point"></span> ОБУЧЕНИЕ · ДЕЙСТВИЯ КРЮЧКА</div>
+   <div class="learning-heading"><div><h2 id="lesson-title">Разберём вязание</h2><p id="lesson-purpose">Выбери операцию и посмотри, как она выполняется. Это учебная схема движений, а не готовая физическая симуляция.</p></div><span id="lesson-count">0 / 0</span></div>
+   <div class="lesson-canvas" id="lesson-diagram"></div>
+   <div class="step-caption"><div id="lesson-step-title">Что происходит с нитью?</div><p id="lesson-step-description">Нажми «Начать урок», чтобы увидеть накид и протягивание по этапам.</p></div>
+   <div class="lesson-navigation">
+     <button id="lesson-prev" disabled>← Назад</button>
+     <button id="lesson-next">Начать урок</button>
+     <button id="lesson-cancel" title="Отменить учебное действие">×</button>
+   </div>
+   <label class="lesson-toggle"><input id="study-mode" type="checkbox" checked> Поэтапный разбор новых операций</label>
+   <div class="lesson-presets"><button id="lesson-start-chain">1. Как делается ВП?</button><button id="lesson-start-sc">2. Как делается СБН?</button></div>
+   <label class="speed-label" for="speed">Скорость формирования нити <strong id="speed-value">Медленно</strong></label>
+   <input id="speed" type="range" min="500" max="3500" step="250" value="2100">
+   <div class="lesson-note"><strong>Важно:</strong> граф петель настоящий, но трёхмерные контуры пока приближённые. Учебную схему нужно сверить с вязальщиком перед физической симуляцией.</div>
+  </section>
+  <section class="inspector"><div class="inspector-top"><div><strong>◎ Проверка структуры</strong><small>Реальные связи петель и история команд</small></div><span id="valid">Локальные проверки OK</span></div><p id="details">Загрузка…</p><div class="inspector-bottom"><span id="hint">—</span><button id="copy">Скопировать JSON ↗</button></div></section>
   <div id="toast" role="status" aria-live="polite"></div>
  </main>
 </div>
