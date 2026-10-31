@@ -1,6 +1,6 @@
 import './style.css';
 import { apply, makeDemo, replay, validateGraph, type Command } from './core/model';
-import { buildThread } from './core/geometry';
+import { buildThread, validateLocalPassages } from './core/geometry';
 import { YarnScene } from './render/YarnScene';
 
 const el=(id:string)=>document.getElementById(id)!;
@@ -23,14 +23,15 @@ function render(hint=''){
   el('stat-left').textContent=String(model.rows.length>1?Math.max(0,model.cursor+1):0);
   el('stat-skip').textContent=String(model.skipped.length);
   const problems=validateGraph(model);
-  el('valid').textContent=problems.length?'Ошибка графа':'Граф корректен';
-  el('valid').classList.toggle('invalid',problems.length>0);
+  const geo=buildThread(model);
+  const geometryIssues=validateLocalPassages(geo);
+  el('valid').textContent=problems.length||geometryIssues.length?'Есть ошибки':'Локальные проходы OK';
+  el('valid').classList.toggle('invalid',problems.length+geometryIssues.length>0);
   const last=all[all.length-1];
   const next=model.rows.length>1 && model.cursor>=0
     ? model.rows[model.rows.length-2][model.cursor] : undefined;
-  const geo=buildThread(model);
   el('details').textContent=
-    'Связанная непрерывная нить: '+geo.segments.length+' участков. '+
+    'Непрерывная нить: '+geo.segments.length+' петель; локальных проходов через основание: '+geo.passages.length+'. '+
     (last?'Последняя '+last.id+' · '+last.kind+' · основание: '+(last.parents.join(', ')||'начальная петля')+'. ':'Начало цепочки. ')+
     (next?'Следующая петля основания '+next.id+'.':'Оснований на текущий ряд не осталось.');
   el('hint').textContent=hint||(model.rows.length===1?'Создай цепочку и нажми Enter':model.cursor<0?'Ряд готов — нажми Enter':'1 — СБН · 2 — прибавка · 3 — убавка');
