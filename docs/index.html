@@ -4,21 +4,26 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <meta name="theme-color" content="#b69071">
 <title>Crochet — Вязание</title>
-  <script type="module" crossorigin src="/crochet/assets/index-CCsRIlSv.js"></script>
-  <link rel="stylesheet" crossorigin href="/crochet/assets/index-Ds7Xj3n9.css">
+  <script type="module" crossorigin src="/crochet/assets/index-D6MPaDzh.js"></script>
+  <link rel="stylesheet" crossorigin href="/crochet/assets/index-BWinb-kg.css">
 </head>
 <body>
 <div id="app" class="game">
   <div id="table" aria-label="Стол с пряжей и крючком"></div>
   <div class="ambient-light"></div>
-  <div class="desk-corner top-left"><span class="little-flower">✿</span></div>
+  <div class="desk-corner top-left">
+    <div class="view-switch" role="group" aria-label="Отображение полотна">
+      <button data-view="3d" class="active" aria-pressed="true">3D</button>
+      <button data-view="2.5d" aria-pressed="false">2,5D</button>
+    </div>
+  </div>
   <div class="desk-corner top-right"><button id="settings-open" aria-label="Настройки" title="Настройки">⚙</button></div>
   <div class="board-actions">
     <button id="unravel" class="tool-action" title="Распустить последнюю петлю (2 или Backspace)" aria-label="Распустить">↶</button>
     <button id="stitch" class="main-action"><span class="key-hint">1</span><span>Воздушная петля</span><span class="loop-icon">◎</span></button>
     <button id="reset" class="tool-action" title="Смотать цепочку сначала" aria-label="Сначала">⟲</button>
   </div>
-  <div class="bottom-note">ЛКМ — вращать · Зажать колёсико — двигать стол · Прокрутка — приблизить к курсору</div>
+  <div id="navigation-hint" class="bottom-note">3D: ЛКМ — вращать · Колёсико зажать — перемещать · Прокрутка — масштаб к курсору</div>
   <div id="notice" aria-live="polite"></div>
   <div id="settings" class="settings-backdrop" hidden>
     <div class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -35,7 +40,7 @@
       </div>
       <div class="settings-section">
         <label for="speed" class="settings-label">Скорость движения крючка</label>
-        <input type="range" id="speed" min="1200" max="6000" step="300" value="4200">
+        <input type="range" id="speed" min="700" max="3500" step="100" value="1900">
         <div class="range-tips"><span>Быстро</span><span>Медленно</span></div>
       </div>
       <div class="settings-section">
@@ -57,7 +62,7 @@
         <div class="key-row"><kbd>Esc</kbd><span>Закрыть настройки</span></div>
       </div>
       <button id="reset-view" class="settings-bottom">Сбросить положение камеры</button>
-      <div class="build-note">Физическая XPBD-модель одной нити: длина, изгиб, контакты, захват крючком. Это эксперимент, не проверенный экспертом симулятор вязания.</div>
+      <div class="build-note">Alpha 0.5: готовые петли фиксируются; новая формируется анимацией протягивания. 3D и 2,5D используют одну структуру. Точность переплетения ещё требует проверки вязальщиком.</div>
     </div>
   </div>
 </div>
