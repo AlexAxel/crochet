@@ -59,6 +59,15 @@ describe('physical yarn: fixed segment lengths and real contact solver',()=>{
    expect(hit.s).toBeCloseTo(.5);
    expect(hit.t).toBeCloseTo(.5);
  });
+ it('does not ignore an exact self-intersection between two physical yarn edges',()=>{
+   const hit=PhysicalYarn.nearestSegments(
+     {x:-1,y:0,z:0},{x:1,y:0,z:0},
+     {x:0,y:-1,z:0},{x:0,y:1,z:0}
+   );
+   expect(hit.distance).toBeLessThan(1e-8);
+   const normalSize=Math.hypot(hit.normal.x,hit.normal.y,hit.normal.z);
+   expect(normalSize).toBeGreaterThan(.99);
+ });
  it('pays out additional filament from skein instead of lengthening existing segments',()=>{
    const r=new PhysicalYarn();
    const source=r.positions.map(p=>({...p}));
