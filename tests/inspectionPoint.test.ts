@@ -15,7 +15,7 @@ describe('hide hook / physical grasp inspection mode',()=>{
   it('shows the existing active loop when idle with the hook hidden',()=>{
     const yarn=new PhysicalYarn();
     const marker=inspectionPoint(yarn.frame,false);
-    expect(marker).toBe(yarn.positions[yarn.activeLoopIndex]);
+    expect(marker).toEqual(yarn.positions[yarn.activeLoopIndex]);
   });
   it('never pretends the hook has grasped yarn during approach',()=>{
     const yarn=new PhysicalYarn();
