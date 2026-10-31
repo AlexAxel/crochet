@@ -78,13 +78,17 @@ describe('physical yarn: fixed segment lengths and real contact solver',()=>{
    for(let round=0;round<2;round++){
      expect(physics.begin()).toBe(true);
      const len=physics.positions.length;
+     const trace: unknown[]=[];
      for(let phase=0;phase<=20;phase++){
        physics.setPullProgress(phase/20);
        for(let j=0;j<3;j++)physics.simulate(1/120);
+       if(phase%3===0)trace.push({p:phase/20,z:+physics.frame.hook.z.toFixed(3),g:physics.frame.grasped,
+         pass:physics.frame.passedThrough,graspIndex:physics.frame.graspIndex,
+         cap:physics.frame.graspDistance});
      }
      expect(physics.positions).toHaveLength(len);
      expect(physics.positions.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.z))).toBe(true);
-     expect(physics.complete()).toBe(true);
+     if(!physics.complete())throw new Error('Round '+round+' hook trace '+JSON.stringify(trace));
      expect(physics.completed).toBe(round+1);
    }
    expect(physics.unravel()).toBe(true);
