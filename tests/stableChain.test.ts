@@ -70,6 +70,10 @@ describe('frozen, inspectable crocheted chain',()=>{
   expect(f.live[f.live.length-1].y).toBeLessThan(f.live[5].y);
   expect(f.segments.some(x=>x.role==='front')).toBe(false);
   expect(f.segments.some(x=>x.role==='tail')).toBe(true);
+  const tail=f.segments.find(x=>x.role==='tail')!.points;
+  expect(Math.min(...tail.map(x=>x.z))).toBeLessThan(0);
+  expect(Math.max(...tail.map(x=>x.z))).toBeGreaterThan(.1);
+  expect(tail.length).toBeGreaterThan(8);
   expect(f.hook).toEqual(f.live[5]);
  });
  it('front chain is a vertical sequence of downward Vs and not closed circles',()=>{
