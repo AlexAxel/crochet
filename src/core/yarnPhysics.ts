@@ -435,7 +435,13 @@ export class PhysicalYarn{
     s=uu>1e-9?clamp((uv*t-uw)/uu):0;
     const x=vec(a.x+u.x*s-c.x-v.x*t,a.y+u.y*s-c.y-v.y*t,a.z+u.z*s-c.z-v.z*t);
     const distance=Math.hypot(x.x,x.y,x.z);
-    return {s,t,distance,normal:distance>1e-8?mul(x,1/distance):vec(0,0,1)};
+    if(distance>1e-8)return {s,t,distance,normal:mul(x,1/distance)};
+    // Even exact edge/edge intersections must produce a contact response.
+    // The old solver skipped distance~0, which let two segments pass right
+    // through each other when their centre lines touched exactly.
+    const cross=vec(u.y*v.z-u.z*v.y,u.z*v.x-u.x*v.z,u.x*v.y-u.y*v.x);
+    const crossLen=Math.hypot(cross.x,cross.y,cross.z);
+    return {s,t,distance,normal:crossLen>1e-8?mul(cross,1/crossLen):vec(0,0,1)};
   }
   private resolveEdgeContacts(handle:number){
     const n=this.positions.length;
@@ -459,7 +465,7 @@ export class PhysicalYarn{
           Math.min(a.z,b.z)>Math.max(c.z,d.z)+minDist||
           Math.min(c.z,d.z)>Math.max(a.z,b.z)+minDist)continue;
         const hit=PhysicalYarn.nearestSegments(a,b,c,d);
-        if(hit.distance>=minDist||hit.distance<1e-8)continue;
+        if(hit.distance>=minDist)continue;
         const weights=[
           (i===handle?0:this.invMass(i))*(1-hit.s),
           (i+1===handle?0:this.invMass(i+1))*hit.s,
