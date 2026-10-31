@@ -87,10 +87,19 @@ export function frozenStitch(index:number):Stitch{
 }
 function animatedLoop(index:number,progress:number){
   const complete=loop(index,'live');
-  const t=smooth((progress-.26)/.70);
-  const origin=centerOf(index-1);
-  const from=p(origin.x+.025,origin.y+.04,lerp(-.14,.32,smooth((progress-.38)/.31)));
-  const shape=complete.map(x=>blend(from,x,t));
+  const old=loop(index-1,'live');
+  const c=centerOf(index-1);
+  const catching=p(old[11].x+.07,old[11].y-.02,.13);
+  const rear=p(c.x+.035,c.y+.04,-.14);
+  const front=p(c.x+.035,c.y+.04,.32);
+  // Keep the yarn and hook in one place when the yarn-over makes contact.
+  // Then guide the caught bight BEHIND -> THROUGH -> OUT OF the live loop.
+  let from:V3;
+  if(progress<.38)from=blend(catching,rear,smooth((progress-.18)/.20));
+  else if(progress<.72)from=blend(rear,front,smooth((progress-.38)/.34));
+  else from=blend(front,complete[4],smooth((progress-.72)/.28));
+  const growth=smooth((progress-.40)/.60);
+  const shape=complete.map(x=>blend(from,x,growth));
   return {shape,hook:cp(shape[4]),grasp:cp(shape[4])};
 }
 export function makeFrame(stitches:readonly Stitch[],progress:number|null):CrochetFrame{
