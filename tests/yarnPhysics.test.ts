@@ -66,6 +66,23 @@ describe('physical yarn: fixed segment lengths and real contact solver',()=>{
    expect(r.positions).toEqual(source);
    expect(length(r.positions)).toBeCloseTo(before,6);
  });
+ it('forms successive chains by moving the same physical rope rather than recreating it',()=>{
+   const physics=new PhysicalYarn();
+   for(let round=0;round<2;round++){
+     expect(physics.begin()).toBe(true);
+     const len=physics.positions.length;
+     for(let phase=0;phase<=12;phase++){
+       physics.setPullProgress(phase/12);
+       physics.simulate(1/120);
+     }
+     expect(physics.positions).toHaveLength(len);
+     expect(physics.positions.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.z))).toBe(true);
+     expect(physics.complete()).toBe(true);
+     expect(physics.completed).toBe(round+1);
+   }
+   expect(physics.unravel()).toBe(true);
+   expect(physics.completed).toBe(1);
+ });
  it('rejects a new stitch before the previous one completes',()=>{
    const r=new PhysicalYarn();
    expect(r.begin()).toBe(true);
