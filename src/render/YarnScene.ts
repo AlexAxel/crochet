@@ -35,6 +35,8 @@ export class YarnScene {
   private start=0;
   private startFraction=1;
   private playing=false;
+  private duration=1800;
+  private latestPosition=new THREE.Vector3();
   constructor(private container:HTMLElement) {
     this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
@@ -96,6 +98,14 @@ export class YarnScene {
     this.ball.traverse(obj=>{if(obj instanceof THREE.Mesh && obj.material!==this.material && obj.material instanceof THREE.MeshStandardMaterial) obj.material.color.set(palette[name]);});
   }
   showDebug(v:boolean){this.debugGroup.visible=v;}
+  setSpeed(duration:number){this.duration=Math.max(350,Math.min(7000,duration));}
+  focusCurrent(){
+    const next=this.latestPosition.clone();
+    this.controls.target.copy(next);
+    this.camera.position.copy(next.clone().add(new THREE.Vector3(0,-1.6,11)));
+    this.camera.lookAt(next);
+    this.camera.zoom=2.45;this.camera.updateProjectionMatrix();this.controls.update();
+  }
   resetCamera(){this.controls.reset();this.camera.position.set(0,-2.2,15);this.controls.target.set(0,0,0);this.camera.zoom=1;this.camera.updateProjectionMatrix();}
   setModel(model:Model,withAnimation=true){
     const data=buildThread(model);
@@ -115,6 +125,7 @@ export class YarnScene {
     if(data.points.length<2)this.activeCurve=undefined;
     this.previousCount=data.points.length;
     this.tool.position.copy(vect(data.tip));
+    this.latestPosition.copy(vect(data.tip));
     const tail=new THREE.CatmullRomCurve3([
       vect(data.tip),new THREE.Vector3(data.tip.x+.4,data.tip.y+.3,.35),
       new THREE.Vector3(3.5,-1,.3),new THREE.Vector3(4.2,-1.5,.3)
@@ -143,7 +154,7 @@ export class YarnScene {
     this.frame=requestAnimationFrame(this.animate);
     this.controls.update();
     if(this.playing&&this.yarn){
-      const part=Math.min(1,(performance.now()-this.start)/550);
+      const part=Math.min(1,(performance.now()-this.start)/this.duration);
       const index=this.yarn.geometry.getIndex();
       if(index){
         const fraction=this.startFraction+(1-this.startFraction)*part;
