@@ -12,11 +12,11 @@ describe('real chain workflow',()=>{
  it('one click performs complete yarn over and pull through before committing',()=>{
   const m=new ChainSession();
   expect(m.press()).toBe(true);
-  m.advance(320);expect(m.frame.stage).toBe('approach');
-  m.advance(200);expect(m.frame.stage).toBe('yarn-over');
-  m.advance(450);expect(m.frame.stage).toBe('draw-through');
+  m.advance(220);expect(m.frame.stage).toBe('approach');
+  m.advance(220);expect(m.frame.stage).toBe('yarn-over');
+  m.advance(500);expect(m.frame.stage).toBe('draw-through');
   expect(m.count).toBe(0);
-  m.advance(580);expect(m.count).toBe(1);
+  m.advance(610);expect(m.count).toBe(1);
   expect(m.frame.stage).toBe('rest');
   expect(m.frame.activeLoops).toBe(1);
  });
