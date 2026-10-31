@@ -1,61 +1,59 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ede2d1"><title>Тихая мастерская · Crochet Lab</title></head>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="theme-color" content="#b69071">
+<title>Crochet — Вязание</title>
+</head>
 <body>
-<div id="app">
- <aside class="sidebar">
-  <div class="brand"><div class="monogram">✳</div><div><small>ТИХАЯ МАСТЕРСКАЯ</small><h2>Crochet <em>Lab</em></h2></div><span class="version">α 0.2</span></div>
-  <p class="description">Техническая мастерская. Полотно создаётся командами, а каждую технику можно разложить на действия крючка.</p>
-  <div class="section-title">ВАША РАБОТА</div>
-  <div class="project"><div class="project-icon">▥</div><div><strong>Образец столбиков</strong><small>Крючок · одно полотно</small></div><span class="status"></span></div>
-  <div class="section-title">ВЯЗАЛЬНЫЕ ОПЕРАЦИИ</div>
-  <div class="buttons">
-   <button data-command="chain"><kbd>Space</kbd><div><strong>Воздушная петля</strong><small>Начальная цепочка</small></div></button>
-   <button data-command="sc"><kbd>1</kbd><div><strong>Столбик без накида</strong><small>Одно основание → одна петля</small></div></button>
-   <button data-command="inc"><kbd>2</kbd><div><strong>Прибавка</strong><small>Две петли в одно основание</small></div></button>
-   <button data-command="dec"><kbd>3</kbd><div><strong>СБН2вместе</strong><small>Два основания → одна петля</small></div></button>
-   <button data-command="skip"><kbd>4</kbd><div><strong>Пропустить петлю</strong><small>Намеренная ошибка</small></div></button>
-   <button data-command="turn" class="turn"><kbd>Enter</kbd><div><strong>Повернуть работу</strong><small>Начать следующий ряд</small></div></button>
+<div id="app" class="game">
+  <div id="table" aria-label="Стол с пряжей и крючком"></div>
+  <div class="ambient-light"></div>
+  <div class="desk-corner top-left"><span class="little-flower">✿</span></div>
+  <div class="desk-corner top-right"><button id="settings-open" aria-label="Настройки" title="Настройки">⚙</button></div>
+  <div class="board-actions">
+    <button id="unravel" class="tool-action" title="Распустить последнюю петлю (2 или Backspace)" aria-label="Распустить">↶</button>
+    <button id="stitch" class="main-action"><span class="key-hint">1</span><span>Воздушная петля</span><span class="loop-icon">◎</span></button>
+    <button id="reset" class="tool-action" title="Смотать цепочку сначала" aria-label="Сначала">⟲</button>
   </div>
-  <div class="history"><button id="undo">↶ Распустить</button><button id="redo">↷ Вернуть</button></div>
-  <div class="section-title">ЦВЕТ ПРЯЖИ</div>
-  <div class="swatches">
-   <button data-color="oat" class="chosen" style="--color:#d6b19d" aria-label="Шерсть"></button>
-   <button data-color="cream" style="--color:#efddbc" aria-label="Кремовая"></button>
-   <button data-color="sage" style="--color:#93a991" aria-label="Шалфей"></button>
-   <button data-color="blue" style="--color:#85a8bd" aria-label="Синяя"></button>
-   <button data-color="rose" style="--color:#c58a9c" aria-label="Розовая"></button>
-   <button data-color="lavender" style="--color:#a68fb3" aria-label="Лавандовая"></button>
+  <div class="bottom-note">Перетаскивай стол для осмотра · Колёсико — приблизить</div>
+  <div id="notice" aria-live="polite"></div>
+  <div id="settings" class="settings-backdrop" hidden>
+    <div class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="settings-head"><h2 id="settings-title">Настройки</h2><button id="settings-close" aria-label="Закрыть">×</button></div>
+      <div class="settings-section">
+        <div class="settings-label">Пряжа</div>
+        <div class="palette">
+          <button data-yarn="blue" class="chosen" style="--c:#73a9d3" aria-label="Голубая"></button>
+          <button data-yarn="cream" style="--c:#e8d2ac" aria-label="Молочная"></button>
+          <button data-yarn="rose" style="--c:#cf8e9c" aria-label="Розовая"></button>
+          <button data-yarn="sage" style="--c:#8eaa92" aria-label="Зелёная"></button>
+          <button data-yarn="lavender" style="--c:#9f90bf" aria-label="Сиреневая"></button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <label for="speed" class="settings-label">Скорость движения крючка</label>
+        <input type="range" id="speed" min="1200" max="6000" step="300" value="2800">
+        <div class="range-tips"><span>Быстро</span><span>Медленно</span></div>
+      </div>
+      <div class="settings-section">
+        <label class="switch-line"><input id="sound" type="checkbox" checked> Тихие звуки пряжи</label>
+        <label class="switch-line"><input id="guide" type="checkbox"> Подсветить текущую петлю</label>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Управление</div>
+        <div class="key-row"><kbd>1</kbd><span>Сделать воздушную петлю</span></div>
+        <div class="key-row"><kbd>2</kbd><span>Распустить одну петлю</span></div>
+        <div class="key-row"><kbd>Backspace</kbd><span>Распустить</span></div>
+        <div class="key-row"><kbd>R</kbd><span>Начать цепочку заново</span></div>
+        <div class="key-row"><kbd>Space</kbd><span>Следующий ряд — в следующей версии</span></div>
+        <div class="key-row"><kbd>Esc</kbd><span>Закрыть настройки</span></div>
+      </div>
+      <button id="reset-view" class="settings-bottom">Сбросить положение камеры</button>
+      <div class="build-note">Прототип кинематики ВП. Захват и протягивание нити анимированы в 3D; физическое поведение пряжи пока требует проверки экспертом.</div>
+    </div>
   </div>
-  <div class="bottom-buttons"><button id="demo">↻ Загрузить образец</button><button id="clear">Начать с нуля</button></div>
- </aside>
- <main class="work">
-  <header class="heading"><div><small>THE CROCHET WORKSHOP · ТЕХНИЧЕСКАЯ АЛЬФА 0.2</small><h1>Вязальная мастерская</h1><p>Всё пространство — рабочий стол. Петли рождаются из команд.</p></div><div class="tools"><button id="focus">⌕ Последняя петля</button><button id="reset-view">⌖ Общий вид</button><label><input type="checkbox" id="debug"> Граф петель</label></div></header>
-  <section class="tabletop"><div class="corner-tag"><span class="point"></span> РАБОЧАЯ ДОСКА · ГЕОМЕТРИЯ ПРИБЛИЖЁННАЯ</div><div id="scene"></div><div class="tabletip">Перетащи — вращать · Колесо мыши — масштаб</div><div class="watermark">CROCHET EXPERIMENT ✳</div></section>
-  <section class="stats">
-   <div><span>РЯД</span><strong id="stat-row">0</strong></div>
-   <div><span>СОЗДАНО ПЕТЕЛЬ</span><strong id="stat-loops">0</strong></div>
-   <div><span>ОСТАЛОСЬ ОСНОВАНИЙ</span><strong id="stat-left">0</strong></div>
-   <div><span>ПРОПУСКИ</span><strong id="stat-skip">0</strong></div>
-  </section>
-  <section class="learning-panel">
-   <div class="learning-kicker"><span class="point"></span> ОБУЧЕНИЕ · ДЕЙСТВИЯ КРЮЧКА</div>
-   <div class="learning-heading"><div><h2 id="lesson-title">Разберём вязание</h2><p id="lesson-purpose">Выбери операцию и посмотри, как она выполняется. Это учебная схема движений, а не готовая физическая симуляция.</p></div><span id="lesson-count">0 / 0</span></div>
-   <div class="lesson-canvas" id="lesson-diagram"></div>
-   <div class="step-caption"><div id="lesson-step-title">Что происходит с нитью?</div><p id="lesson-step-description">Нажми «Начать урок», чтобы увидеть накид и протягивание по этапам.</p></div>
-   <div class="lesson-navigation">
-     <button id="lesson-prev" disabled>← Назад</button>
-     <button id="lesson-next">Начать урок</button>
-     <button id="lesson-cancel" title="Отменить учебное действие">×</button>
-   </div>
-   <label class="lesson-toggle"><input id="study-mode" type="checkbox" checked> Поэтапный разбор новых операций</label>
-   <div class="lesson-presets"><button id="lesson-start-chain">1. Как делается ВП?</button><button id="lesson-start-sc">2. Как делается СБН?</button></div>
-   <label class="speed-label" for="speed">Скорость формирования нити <strong id="speed-value">Медленно</strong></label>
-   <input id="speed" type="range" min="500" max="3500" step="250" value="2100">
-   <div class="lesson-note"><strong>Важно:</strong> граф петель настоящий, но трёхмерные контуры пока приближённые. Учебную схему нужно сверить с вязальщиком перед физической симуляцией.</div>
-  </section>
-  <section class="inspector"><div class="inspector-top"><div><strong>◎ Проверка структуры</strong><small>Реальные связи петель и история команд</small></div><span id="valid">Локальные проверки OK</span></div><p id="details">Загрузка…</p><div class="inspector-bottom"><span id="hint">—</span><button id="copy">Скопировать JSON ↗</button></div></section>
-  <div id="toast" role="status" aria-live="polite"></div>
- </main>
 </div>
 <script type="module" src="/src/main.ts"></script>
-</body></html>
+</body>
+</html>
