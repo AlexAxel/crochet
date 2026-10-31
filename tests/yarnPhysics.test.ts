@@ -52,6 +52,20 @@ describe('physical yarn: fixed segment lengths and real contact solver',()=>{
    expect(hit.s).toBeCloseTo(.5);
    expect(hit.t).toBeCloseTo(.5);
  });
+ it('pays out additional filament from skein instead of lengthening existing segments',()=>{
+   const r=new PhysicalYarn();
+   const source=r.positions.map(p=>({...p}));
+   const length=(ps:typeof source)=>ps.slice(1).reduce((acc,p,i)=>acc+
+     Math.hypot(p.x-ps[i].x,p.y-ps[i].y,p.z-ps[i].z),0);
+   const before=length(source);
+   expect(r.begin()).toBe(true);
+   expect(r.positions.length).toBeGreaterThan(source.length);
+   expect(length(r.positions)).toBeGreaterThan(before+.45);
+   expect(r.positions.slice(0,source.length-1)).toEqual(source.slice(0,-1));
+   expect(r.unravel()).toBe(true);
+   expect(r.positions).toEqual(source);
+   expect(length(r.positions)).toBeCloseTo(before,6);
+ });
  it('rejects a new stitch before the previous one completes',()=>{
    const r=new PhysicalYarn();
    expect(r.begin()).toBe(true);
