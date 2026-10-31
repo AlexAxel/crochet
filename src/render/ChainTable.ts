@@ -134,7 +134,7 @@ export class ChainTable{
   private resizeObserver:ResizeObserver;
   private frameId=0;
   private startTime=0;
-  private lengthMs=4100;
+  private lengthMs=4200;
   private lastUpdate=0;
   private moving=false;
   private settleUntil=0;
