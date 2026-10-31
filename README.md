@@ -2,6 +2,9 @@
 
 This is a **real, command-driven stitch graph** with a single procedurally rendered yarn path, not a sprite grid or a stitch GIF. It is a research prototype for a relaxing, top-down Steam crochet game. UI is in Russian.
 
+
+**Try in browser (StackBlitz GitHub import):** [Open alpha branch](https://stackblitz.com/github/AlexAxel/crochet/tree/alpha/stitched-yarn-prototype?startScript=dev). This uses StackBlitz WebContainers, not a deployed static website; browser compatibility is not yet verified.
+
 ## Run
 
 Requires Node.js >= 20.
