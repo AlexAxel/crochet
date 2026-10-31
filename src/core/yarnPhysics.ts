@@ -28,6 +28,7 @@ export type PhysicsSnapshot={
   contactFreeze:number;
   rest:number[];
   bends:number[];
+  heldLoop:Vector;
 };
 export type PhysicsFrame={
   yarn:readonly Vector[];
@@ -68,13 +69,13 @@ function hookTrack(progress:number,grasp:Vector,entry:Vector,rest:Vector):Vector
     return mix(rest,grasp,smooth(p/CAPTURE_AT));
   // AFTER hooking the yarn, move the captured material point to the
   // back side of the old loop's opening (not through its solid strands).
-  const rear=vec(entry.x+.015,entry.y,-.26);
+  const rear=vec(entry.x+.015,entry.y,entry.z-.24);
   if(p<DRAW_START)return mix(grasp,rear,smooth((p-CAPTURE_AT)/(DRAW_START-CAPTURE_AT)));
-  const front=vec(entry.x+.015,entry.y,.35);
+  const front=vec(entry.x+.015,entry.y,entry.z+.36);
   if(p<DRAW_END)return mix(rear,front,smooth((p-DRAW_START)/(DRAW_END-DRAW_START)));
   // Pull the new bight clear, leaving it on the hook and the old
   // opening behind it. The yarn is still the *same physical material*.
-  return mix(front,vec(entry.x+.40,entry.y+.13,.31),smooth((p-DRAW_END)/(1-DRAW_END)));
+  return mix(front,vec(entry.x+.40,entry.y+.13,entry.z+.30),smooth((p-DRAW_END)/(1-DRAW_END)));
 }
 
 /** arclength resampling prevents one physical link from being much longer. */
@@ -147,6 +148,7 @@ export class PhysicalYarn{
   private contacts=0;
   private lastStrain=0;
   private hook:Vector=vec(-2.68,.58,.3);
+  private heldLoop:Vector=vec(-2.68,.58,.3);
   private accumulated=0;
   constructor(){this.reset();}
   get completed(){return this.stitches;}
@@ -176,18 +178,20 @@ export class PhysicalYarn{
     this.crown=knot.crown;this.outlet=knot.outlet;
     this.lastFreeze=Math.max(1,knot.outlet-7);
     this.stitches=0;this.saved=[];this.pull=null;this.contacts=0;this.lastStrain=0;this.accumulated=0;
-    this.hook=copy(this.positions[this.crown]);
+    this.heldLoop=copy(this.positions[this.crown]);
+    this.hook=copy(this.heldLoop);
   }
   private snapshot():PhysicsSnapshot{
     return {positions:this.positions.map(copy),previous:this.previous.map(copy),
       active:this.crown,outlet:this.outlet,count:this.stitches,contactFreeze:this.lastFreeze,
-      rest:[...this.rest],bends:[...this.bends]};
+      rest:[...this.rest],bends:[...this.bends],heldLoop:copy(this.heldLoop)};
   }
   private restore(s:PhysicsSnapshot){
     this.positions=s.positions.map(copy);this.previous=s.previous.map(copy);
     this.crown=s.active;this.outlet=s.outlet;this.stitches=s.count;this.lastFreeze=s.contactFreeze;
     this.rest=[...s.rest];this.bends=[...s.bends];this.fixedEnd=this.positions.length-1;
-    this.pull=null;this.hook=copy(this.positions[this.crown]);
+    this.heldLoop=copy(s.heldLoop);
+    this.pull=null;this.hook=copy(this.heldLoop);
   }
   private aperture():Vector {
     // The *hole* lies between the arms of the LIVE loop, not on its crown.
@@ -227,15 +231,18 @@ export class PhysicalYarn{
     const material=Math.min(this.fixedEnd-18,this.outlet+Math.max(7,Math.round(.53/SEGMENT)));
     if(material<=this.outlet)return false;
     const entry=this.aperture();
+    // The hook holds the loop ABOVE the tabletop, leaving an actual
+    // passage underneath. The two loop arms move up under constraints.
+    entry.z=Math.max(.19,entry.z);
     const start=copy(this.positions[material]);
     const before=this.snapshot();
     const rimLeft=Math.max(0,this.crown-4);
     const rimRight=Math.min(this.fixedEnd-1,this.crown+4);
     const support:[{index:number;point:Vector},{index:number;point:Vector}]=[
-      {index:rimLeft,point:copy(this.positions[rimLeft])},
-      {index:rimRight,point:copy(this.positions[rimRight])}
+      {index:rimLeft,point:{...this.positions[rimLeft],z:Math.max(.15,this.positions[rimLeft].z)}},
+      {index:rimRight,point:{...this.positions[rimRight],z:Math.max(.15,this.positions[rimRight].z)}}
     ];
-    const restHook=copy(this.positions[this.crown]);
+    const restHook=copy(this.heldLoop);
     this.feedFromSkein();
     this.pull={material,entry,start,progress:0,before,oldLoop:this.crown,
       restHook,support,caught:false,visitedBack:false,passedThrough:false};
@@ -262,7 +269,8 @@ export class PhysicalYarn{
     this.crown=p.material;
     this.outlet=p.material+Math.max(4,Math.round(.32/SEGMENT));
     this.pull=null;
-    this.hook=copy(this.positions[this.crown]);
+    this.heldLoop=copy(this.positions[this.crown]);
+    this.hook=copy(this.heldLoop);
     return true;
   }
   unravel():boolean{
@@ -293,7 +301,7 @@ export class PhysicalYarn{
     return i <= this.lastFreeze ? .18 : 1;
   }
   private hookTarget(){
-    if(!this.pull)return this.positions[this.crown];
+    if(!this.pull)return this.heldLoop;
     return hookTrack(this.pull.progress,this.pull.start,this.pull.entry,this.pull.restHook);
   }
   private tick(dt:number){
