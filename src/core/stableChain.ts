@@ -110,9 +110,20 @@ function backLink(from:V3,to:V3,index:number):V3[]{
   ];
 }
 function tailTo(point:V3):V3[]{
+  // Pre-tied slip knot is present BEFORE CH #1, but not counted.
+  // The loop at the base of the live U is crossed at unequal depth
+  // rather than inventing an extra completed chain stitch.
+  const knotY=CHAIN_START_Y-.27;
   return [
     p(-1.58,-2.80,.045),p(-1.43,-2.59,.05),
-    p(-1.18,-2.34,.08),p(-.98,-2.03,.09),
+    p(-1.19,-2.31,.08),
+    p(CHAIN_X-.27,knotY-.015,.10),
+    p(CHAIN_X-.10,knotY+.02,-.04),
+    p(CHAIN_X-.02,knotY+.12,-.09),
+    p(CHAIN_X-.18,knotY+.14,.04),
+    p(CHAIN_X-.30,knotY+.03,.12),
+    p(CHAIN_X-.21,knotY-.09,.17),
+    p(CHAIN_X-.12,knotY+.005,.11),
     cp(point)
   ];
 }
